@@ -1,11 +1,12 @@
-use bevy::{input::mouse::MouseWheel, prelude::*, utils::dbg};
+use bevy::{input::mouse::MouseWheel, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
 
 fn main() -> AppExit {
     App::new()
         .add_plugins((DefaultPlugins, TilemapPlugin))
+        .add_event::<MouseWheel>()
         .add_systems(Startup, startup)
-        .add_systems(Update, (zoom, movement))
+        .add_systems(Update, (movement, zoom))
         .run()
 }
 
@@ -27,6 +28,8 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .spawn(TileBundle {
                     position: tile_pos,
                     tilemap_id: TilemapId(tilemap_entity),
+                    color: TileColor(bevy::color::palettes::basic::BLUE.into()),
+                    texture_index: TileTextureIndex(5),
                     ..Default::default()
                 })
                 .id();
@@ -54,10 +57,13 @@ pub fn zoom(
     mut scroll: EventReader<MouseWheel>,
     mut query: Query<&mut OrthographicProjection, With<Camera>>,
 ) {
-    for mut ortho in query.iter_mut() {
-        for event in scroll.read() {
-            dbg(event);
-            ortho.scale += event.x;
+    let mut ortho = query.single_mut();
+
+    for event in scroll.read() {
+        if event.y > 0.0 {
+            ortho.scale /= 1.25;
+        } else {
+            ortho.scale *= 1.25;
         }
     }
 }
@@ -67,30 +73,32 @@ pub fn movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Camera>>,
 ) {
-    for mut transform in query.iter_mut() {
-        let mut direction = Vec3::ZERO;
+    let mut transform = query.single_mut();
 
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            direction -= Vec3::new(1.0, 0.0, 0.0);
-        }
+    let mut direction = Vec3::ZERO;
 
-        if keyboard_input.pressed(KeyCode::KeyD) {
-            direction += Vec3::new(1.0, 0.0, 0.0);
-        }
-
-        if keyboard_input.pressed(KeyCode::KeyW) {
-            direction += Vec3::new(0.0, 1.0, 0.0);
-        }
-
-        if keyboard_input.pressed(KeyCode::KeyS) {
-            direction -= Vec3::new(0.0, 1.0, 0.0);
-        }
-
-        let z = transform.translation.z;
-        transform.translation += time.delta_seconds() * direction * 500.;
-
-        // Important! We need to restore the Z values when moving the camera around.
-        // Bevy has a specific camera setup and this can mess with how our layers are shown.
-        transform.translation.z = z;
+    if keyboard_input.pressed(KeyCode::KeyA) {
+        direction -= Vec3::new(1.0, 0.0, 0.0);
     }
+
+    if keyboard_input.pressed(KeyCode::KeyD) {
+        direction += Vec3::new(1.0, 0.0, 0.0);
+    }
+
+    if keyboard_input.pressed(KeyCode::KeyW) {
+        direction += Vec3::new(0.0, 1.0, 0.0);
+    }
+
+    if keyboard_input.pressed(KeyCode::KeyS) {
+        direction -= Vec3::new(0.0, 1.0, 0.0);
+    }
+
+    let direction = direction.normalize_or_zero();
+
+    let z = transform.translation.z;
+    transform.translation += time.delta_seconds() * direction * 500.;
+
+    // Important! We need to restore the Z values when moving the camera around.
+    // Bevy has a specific camera setup and this can mess with how our layers are shown.
+    transform.translation.z = z;
 }
