@@ -1,4 +1,8 @@
-use bevy::{input::mouse::MouseWheel, prelude::*, transform::commands};
+use bevy::{
+    input::mouse::{MouseMotion, MouseWheel},
+    prelude::*,
+    transform::commands,
+};
 use bevy_ecs_tilemap::prelude::*;
 
 fn main() -> AppExit {
@@ -184,36 +188,17 @@ pub fn zoom(
 }
 
 pub fn movement(
-    time: Res<Time>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut Transform, With<Camera>>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    mut motion: EventReader<MouseMotion>,
+    mut query: Query<(&mut Transform, &OrthographicProjection), With<Camera>>,
 ) {
-    let mut transform = query.single_mut();
+    let (mut transform, ortho) = query.single_mut();
 
-    let mut direction = Vec3::ZERO;
-
-    if keyboard_input.pressed(KeyCode::KeyA) {
-        direction -= Vec3::new(1.0, 0.0, 0.0);
+    if !mouse.pressed(MouseButton::Middle) {
+        return;
     }
 
-    if keyboard_input.pressed(KeyCode::KeyD) {
-        direction += Vec3::new(1.0, 0.0, 0.0);
+    for event in motion.read() {
+        transform.translation += ortho.scale * Vec3::new(-event.delta.x, event.delta.y, 0.0);
     }
-
-    if keyboard_input.pressed(KeyCode::KeyW) {
-        direction += Vec3::new(0.0, 1.0, 0.0);
-    }
-
-    if keyboard_input.pressed(KeyCode::KeyS) {
-        direction -= Vec3::new(0.0, 1.0, 0.0);
-    }
-
-    let direction = direction.normalize_or_zero();
-
-    let z = transform.translation.z;
-    transform.translation += time.delta_seconds() * direction * 500.;
-
-    // Important! We need to restore the Z values when moving the camera around.
-    // Bevy has a specific camera setup and this can mess with how our layers are shown.
-    transform.translation.z = z;
 }
