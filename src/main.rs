@@ -1,4 +1,4 @@
-use bevy::{input::mouse::MouseWheel, prelude::*};
+use bevy::{input::mouse::MouseWheel, prelude::*, transform::commands};
 use bevy_ecs_tilemap::prelude::*;
 
 fn main() -> AppExit {
@@ -7,7 +7,10 @@ fn main() -> AppExit {
         .add_event::<MouseWheel>()
         .init_resource::<CursorPos>()
         .add_systems(Startup, startup)
-        .add_systems(Update, (movement, zoom, cursor_pos, red))
+        .add_systems(
+            Update,
+            (movement, zoom, cursor_pos, mouse_paint, color_tile),
+        )
         .run()
 }
 
@@ -26,13 +29,16 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
         for y in 0..map_size.y {
             let tile_pos = TilePos { x, y };
             let tile_entity = commands
-                .spawn(TileBundle {
-                    position: tile_pos,
-                    tilemap_id: TilemapId(tilemap_entity),
-                    color: TileColor(bevy::color::palettes::basic::BLUE.into()),
-                    texture_index: TileTextureIndex(5),
-                    ..Default::default()
-                })
+                .spawn((
+                    TileBundle {
+                        position: tile_pos,
+                        tilemap_id: TilemapId(tilemap_entity),
+                        color: TileColor(bevy::color::palettes::basic::BLUE.into()),
+                        texture_index: TileTextureIndex(5),
+                        ..Default::default()
+                    },
+                    TileState::Empty,
+                ))
                 .id();
             tile_storage.set(&tile_pos, tile_entity);
         }
@@ -54,38 +60,83 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-fn red(
+#[derive(Debug, Clone, Copy, Component, Default)]
+
+enum TileState {
+    #[default]
+    Empty,
+    Wall,
+    Start,
+    End,
+}
+
+fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>>) {
+    for (mut color, state) in tile_q.iter_mut() {
+        use bevy::color::palettes::basic;
+        color.0 = match state {
+            TileState::Empty => basic::GRAY,
+            TileState::Wall => basic::WHITE,
+            TileState::Start => basic::GREEN,
+            TileState::End => basic::RED,
+        }
+        .into();
+    }
+}
+
+fn mouse_paint(
     cursor_pos: Res<CursorPos>,
-    tilemap_q: Query<(
+    tilemap: Query<(
         &TilemapSize,
         &TilemapGridSize,
         &TilemapType,
         &TileStorage,
         &Transform,
     )>,
-    mut tile_q: Query<&mut TileColor>,
+    mut states: Query<&mut TileState>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
-    for (map_size, grid_size, map_type, tile_storage, map_transform) in tilemap_q.iter() {
-        // Grab the cursor position from the `Res<CursorPos>`
-        let cursor_pos: Vec2 = cursor_pos.0;
-        // We need to make sure that the cursor's world position is correct relative to the map
-        // due to any map transformation.
-        let cursor_in_map_pos: Vec2 = {
-            // Extend the cursor_pos vec3 by 0.0 and 1.0
-            let cursor_pos = Vec4::from((cursor_pos, 0.0, 1.0));
-            let cursor_in_map_pos = map_transform.compute_matrix().inverse() * cursor_pos;
-            cursor_in_map_pos.xy()
-        };
-        // Once we have a world position we can transform it into a possible tile position.
-        if let Some(tile_pos) =
-            TilePos::from_world_pos(&cursor_in_map_pos, map_size, grid_size, map_type)
-        {
-            // Highlight the relevant tile's label
-            if let Some(tile_entity) = tile_storage.get(&tile_pos) {
-                let mut color = tile_q.get_mut(tile_entity).unwrap();
-                color.0 = bevy::color::palettes::basic::RED.into();
-            }
-        }
+    let (map_size, grid_size, map_type, tile_storage, map_transform) = tilemap.single();
+
+    // Grab the cursor position from the `Res<CursorPos>`
+    let cursor_pos: Vec2 = cursor_pos.0;
+
+    // We need to make sure that the cursor's world position is correct relative to the map
+    // due to any map transformation.
+    let cursor_in_map_pos: Vec2 = {
+        // Extend the cursor_pos vec3 by 0.0 and 1.0
+        let cursor_pos = Vec4::from((cursor_pos, 0.0, 1.0));
+        let cursor_in_map_pos = map_transform.compute_matrix().inverse() * cursor_pos;
+        cursor_in_map_pos.xy()
+    };
+
+    // Once we have a world position we can transform it into a possible tile position.
+    let Some(tile_pos) = TilePos::from_world_pos(&cursor_in_map_pos, map_size, grid_size, map_type)
+    else {
+        return;
+    };
+
+    // Highlight the relevant tile's label
+    let Some(tile_entity) = tile_storage.get(&tile_pos) else {
+        return;
+    };
+
+    let mut state = states.get_mut(tile_entity).unwrap();
+
+    if mouse.pressed(MouseButton::Left) {
+        *state = TileState::Wall;
+    };
+
+    if mouse.pressed(MouseButton::Right) {
+        *state = TileState::Empty;
+    }
+
+    if keyboard.just_pressed(KeyCode::KeyS) {
+        *state = TileState::Start;
+    }
+
+    if keyboard.just_pressed(KeyCode::KeyE) {
+        *state = TileState::End;
     }
 }
 
