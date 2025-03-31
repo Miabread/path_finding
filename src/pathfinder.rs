@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TilePos;
-use bevy_egui::egui::{self, RadioButton};
 use rand::seq::IteratorRandom;
 use std::collections::{BinaryHeap, HashSet, VecDeque};
 
@@ -33,181 +32,114 @@ fn update_endpoints(
     }
 }
 
-#[derive(Debug, Resource, Default)]
+#[derive(Resource, Default)]
 pub struct Pathfinder {
-    pub algorithm: Algorithm,
+    algorithm: Option<Box<dyn Algorithm + Sync + Send>>,
     start: HashSet<TilePos>,
     goal: HashSet<TilePos>,
 }
 
 impl Pathfinder {
-    pub fn step(&mut self) {
-        let endpoints = Option::zip(
-            self.start.iter().choose(&mut rand::rng()),
-            self.goal.iter().choose(&mut rand::rng()),
-        );
+    pub fn start(&mut self, algorithm: AlgorithmOption) {
+        self.algorithm = Some(algorithm.into());
 
-        if let Some((start, goal)) = endpoints {
-            self.algorithm.step(*start, *goal);
+        if let Some(start) = self.start.iter().choose(&mut rand::rng()) {
+            self.algorithm.as_mut().unwrap().start(*start);
         }
     }
+
+    pub fn step(&mut self) {
+        if let Some(algorithm) = &mut self.algorithm {
+            algorithm.step(&self.goal);
+        }
+    }
+
+    pub fn stop(&mut self) {
+        self.algorithm = None;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AlgorithmOption {
+    #[default]
+    BreadthFirst,
+    AStar,
+    DepthFirst,
+    Random,
+}
+
+impl From<AlgorithmOption> for Box<dyn Algorithm + Send + Sync> {
+    fn from(value: AlgorithmOption) -> Self {
+        match value {
+            AlgorithmOption::BreadthFirst => Box::new(BreadthFirst::default()),
+            AlgorithmOption::AStar => Box::new(AStar::default()),
+            AlgorithmOption::DepthFirst => Box::new(DepthFirst::default()),
+            AlgorithmOption::Random => Box::new(Random::default()),
+        }
+    }
+}
+
+trait Algorithm {
+    fn start(&mut self, start: TilePos);
+    fn step(&mut self, goals: &HashSet<TilePos>);
 }
 
 #[derive(Debug, Default)]
 struct BreadthFirst {
-    queue: VecDeque<bool>,
+    queue: VecDeque<TilePos>,
 }
 
-impl BreadthFirst {
-    pub fn step(&mut self, start: TilePos, goal: TilePos) {}
+impl Algorithm for BreadthFirst {
+    fn start(&mut self, start: TilePos) {
+        self.queue.push_back(start);
+    }
+
+    fn step(&mut self, goals: &HashSet<TilePos>) {
+        todo!()
+    }
 }
 
 #[derive(Debug, Default)]
 struct AStar {
-    queue: BinaryHeap<bool>,
+    queue: BinaryHeap<TilePos>,
 }
 
-impl AStar {
-    pub fn step(&mut self, start: TilePos, goal: TilePos) {}
+impl Algorithm for AStar {
+    fn start(&mut self, start: TilePos) {
+        self.queue.push(start);
+    }
+
+    fn step(&mut self, goals: &HashSet<TilePos>) {
+        todo!()
+    }
 }
 
 #[derive(Debug, Default)]
 struct DepthFirst {
-    queue: Vec<bool>,
+    queue: Vec<TilePos>,
 }
 
-impl DepthFirst {
-    pub fn step(&mut self, start: TilePos, goal: TilePos) {}
+impl Algorithm for DepthFirst {
+    fn start(&mut self, start: TilePos) {
+        self.queue.push(start);
+    }
+
+    fn step(&mut self, goals: &HashSet<TilePos>) {
+        todo!()
+    }
 }
 
 #[derive(Debug, Default)]
 struct Random {
-    queue: Vec<bool>,
+    queue: Vec<TilePos>,
 }
 
-impl Random {
-    pub fn step(&mut self, start: TilePos, goal: TilePos) {}
-}
-
-pub fn show_algorithm_selection(ui: &mut egui::Ui, algorithm: &mut Algorithm) {
-    if ui
-        .add(RadioButton::new(
-            algorithm.is_breadth(),
-            "Dijkstra (Breadth First)",
-        ))
-        .clicked()
-    {
-        *algorithm = BreadthFirst::default().into();
+impl Algorithm for Random {
+    fn start(&mut self, start: TilePos) {
+        self.queue.push(start);
     }
 
-    if ui
-        .add(egui::RadioButton::new(algorithm.is_astar(), "A*"))
-        .clicked()
-    {
-        *algorithm = AStar::default().into();
-    }
-
-    if ui
-        .add(egui::RadioButton::new(algorithm.is_depth(), "Depth First"))
-        .clicked()
-    {
-        *algorithm = DepthFirst::default().into();
-    }
-
-    if ui
-        .add(egui::RadioButton::new(algorithm.is_random(), "Random"))
-        .clicked()
-    {
-        *algorithm = Random::default().into();
-    }
-}
-
-#[derive(Debug)]
-pub enum Algorithm {
-    BreadthFirst(BreadthFirst),
-    AStar(AStar),
-    DepthFirst(DepthFirst),
-    Random(Random),
-}
-
-impl Algorithm {
-    pub fn reset(&mut self) {
-        *self = match self {
-            Algorithm::BreadthFirst(_) => BreadthFirst::default().into(),
-            Algorithm::AStar(_) => AStar::default().into(),
-            Algorithm::DepthFirst(_) => DepthFirst::default().into(),
-            Algorithm::Random(_) => Random::default().into(),
-        }
-    }
-
-    pub fn step(&mut self, start: TilePos, goal: TilePos) {
-        match self {
-            Algorithm::BreadthFirst(algo) => algo.step(start, goal),
-            Algorithm::AStar(algo) => algo.step(start, goal),
-            Algorithm::DepthFirst(algo) => algo.step(start, goal),
-            Algorithm::Random(algo) => algo.step(start, goal),
-        }
-    }
-
-    /// Returns `true` if the algorithm is [`BreadthFirst`].
-    ///
-    /// [`BreadthFirst`]: Algorithm::BreadthFirst
-    #[must_use]
-    pub fn is_breadth(&self) -> bool {
-        matches!(self, Self::BreadthFirst(..))
-    }
-
-    /// Returns `true` if the algorithm is [`AStar`].
-    ///
-    /// [`AStar`]: Algorithm::AStar
-    #[must_use]
-    pub fn is_astar(&self) -> bool {
-        matches!(self, Self::AStar(..))
-    }
-
-    /// Returns `true` if the algorithm is [`DepthFirst`].
-    ///
-    /// [`DepthFirst`]: Algorithm::DepthFirst
-    #[must_use]
-    pub fn is_depth(&self) -> bool {
-        matches!(self, Self::DepthFirst(..))
-    }
-
-    /// Returns `true` if the algorithm is [`Random`].
-    ///
-    /// [`Random`]: Algorithm::Random
-    #[must_use]
-    pub fn is_random(&self) -> bool {
-        matches!(self, Self::Random(..))
-    }
-}
-
-impl Default for Algorithm {
-    fn default() -> Self {
-        BreadthFirst::default().into()
-    }
-}
-
-impl From<BreadthFirst> for Algorithm {
-    fn from(value: BreadthFirst) -> Self {
-        Self::BreadthFirst(value)
-    }
-}
-
-impl From<AStar> for Algorithm {
-    fn from(value: AStar) -> Self {
-        Self::AStar(value)
-    }
-}
-
-impl From<DepthFirst> for Algorithm {
-    fn from(value: DepthFirst) -> Self {
-        Self::DepthFirst(value)
-    }
-}
-
-impl From<Random> for Algorithm {
-    fn from(value: Random) -> Self {
-        Self::Random(value)
+    fn step(&mut self, goals: &HashSet<TilePos>) {
+        todo!()
     }
 }
