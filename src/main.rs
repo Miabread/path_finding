@@ -1,11 +1,13 @@
-mod algorithm;
 mod input;
+mod options;
+mod pathfinder;
 
-use algorithm::{algorithm_plugin, show_algorithm_selection, Algorithm};
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::EguiPlugin;
 use input::input_plugin;
+use options::options_plugin;
+use pathfinder::pathfinder_plugin;
 
 fn main() -> AppExit {
     App::new()
@@ -14,18 +16,12 @@ fn main() -> AppExit {
             TilemapPlugin,
             EguiPlugin,
             input_plugin,
-            algorithm_plugin,
+            pathfinder_plugin,
+            options_plugin,
         ))
         .add_systems(Startup, startup)
-        .add_systems(Update, (color_tile, ui_example_system))
+        .add_systems(Update, color_tile)
         .run()
-}
-
-fn ui_example_system(mut contexts: EguiContexts, mut algorithm: ResMut<Algorithm>) {
-    egui::Window::new("Settings").show(contexts.ctx_mut(), |ui| {
-        ui.label("Algorithm");
-        show_algorithm_selection(ui, &mut algorithm);
-    });
 }
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
