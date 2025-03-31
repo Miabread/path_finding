@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use bevy_egui::{egui::Window, EguiContexts};
+use bevy_egui::{
+    egui::{Slider, Window},
+    EguiContexts,
+};
 
 use crate::{
     pathfinder::{AlgorithmOption, Pathfinder},
@@ -14,6 +17,8 @@ pub fn options_plugin(app: &mut App) {
 #[derive(Debug, Resource, Default)]
 struct Options {
     algorithm: AlgorithmOption,
+    auto_enabled: bool,
+    auto_speed: usize,
 }
 
 fn options_menu(
@@ -23,41 +28,68 @@ fn options_menu(
     mut tiles: Query<&mut TileState>,
 ) {
     Window::new("Options").show(contexts.ctx_mut(), |ui| {
-        ui.label("Algorithm");
-        ui.radio_value(
-            &mut options.algorithm,
-            AlgorithmOption::BreadthFirst,
-            "Dijkstra (Breadth First)",
-        );
-        ui.radio_value(&mut options.algorithm, AlgorithmOption::AStar, "A*");
-        ui.radio_value(
-            &mut options.algorithm,
-            AlgorithmOption::DepthFirst,
-            "Depth First",
-        );
-        ui.radio_value(&mut options.algorithm, AlgorithmOption::Random, "Random");
+        ui.heading("Algorithm");
+        {
+            let mut restart = false;
 
-        ui.label("Pathfinder");
-        if ui.button("Start").clicked() {
-            pathfinder.start(options.algorithm);
-        };
-        if ui.button("Step").clicked() {
-            pathfinder.step();
-        };
-        if ui.button("Stop").clicked() {
-            pathfinder.stop();
-        };
+            restart |= ui
+                .radio_value(
+                    &mut options.algorithm,
+                    AlgorithmOption::BreadthFirst,
+                    "Dijkstra (Breadth First)",
+                )
+                .changed();
 
-        ui.label("Field");
-        if ui.button("Clear All").clicked() {
-            for mut tile in tiles.iter_mut() {
-                *tile = TileState::Empty
+            restart |= ui
+                .radio_value(&mut options.algorithm, AlgorithmOption::AStar, "A*")
+                .changed();
+
+            restart |= ui
+                .radio_value(
+                    &mut options.algorithm,
+                    AlgorithmOption::DepthFirst,
+                    "Depth First",
+                )
+                .changed();
+
+            restart |= ui
+                .radio_value(&mut options.algorithm, AlgorithmOption::Random, "Random")
+                .changed();
+
+            if restart {
+                pathfinder.restart(options.algorithm);
             }
         }
-        if ui.button("Fill All").clicked() {
-            for mut tile in tiles.iter_mut() {
-                *tile = TileState::Wall
+
+        ui.separator();
+        ui.heading("Pathfinder");
+        ui.horizontal(|ui| {
+            if ui.button("Restart").clicked() {
+                pathfinder.restart(options.algorithm);
+            };
+
+            if ui.button("Step").clicked() {
+                pathfinder.step();
+            };
+
+            ui.checkbox(&mut options.auto_enabled, "Auto");
+        });
+        ui.add(Slider::new(&mut options.auto_speed, 0..=10).text("Speed"));
+
+        ui.separator();
+        ui.heading("Map");
+        ui.horizontal(|ui| {
+            if ui.button("Clear All").clicked() {
+                for mut tile in tiles.iter_mut() {
+                    *tile = TileState::Empty
+                }
             }
-        }
+
+            if ui.button("Fill All").clicked() {
+                for mut tile in tiles.iter_mut() {
+                    *tile = TileState::Wall
+                }
+            }
+        });
     });
 }

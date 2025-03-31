@@ -40,7 +40,7 @@ pub struct Pathfinder {
 }
 
 impl Pathfinder {
-    pub fn start(&mut self, algorithm: AlgorithmOption) {
+    pub fn restart(&mut self, algorithm: AlgorithmOption) {
         self.algorithm = Some(algorithm.into());
 
         if let Some(start) = self.start.iter().choose(&mut rand::rng()) {
@@ -52,10 +52,6 @@ impl Pathfinder {
         if let Some(algorithm) = &mut self.algorithm {
             algorithm.step(&self.goal);
         }
-    }
-
-    pub fn stop(&mut self) {
-        self.algorithm = None;
     }
 }
 
