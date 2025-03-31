@@ -1,25 +1,38 @@
 use bevy::{
     input::mouse::{MouseMotion, MouseWheel},
     prelude::*,
-    transform::commands,
 };
 use bevy_ecs_tilemap::prelude::*;
+use bevy_egui::{egui, input::egui_wants_input, EguiContexts, EguiPlugin};
 
 fn main() -> AppExit {
     App::new()
-        .add_plugins((DefaultPlugins, TilemapPlugin))
+        .add_plugins((DefaultPlugins, TilemapPlugin, EguiPlugin))
         .add_event::<MouseWheel>()
         .init_resource::<CursorPos>()
         .add_systems(Startup, startup)
         .add_systems(
             Update,
-            (movement, zoom, cursor_pos, mouse_paint, color_tile),
+            (
+                (movement, zoom, cursor_pos, mouse_paint).run_if(not(egui_wants_input)),
+                color_tile,
+                ui_example_system,
+            ),
         )
         .run()
 }
 
+fn ui_example_system(mut contexts: EguiContexts) {
+    egui::SidePanel::left("left_panel")
+        .resizable(true)
+        .show(contexts.ctx_mut(), |ui| {
+            ui.label("Left resizeable panel");
+            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
+        });
+}
+
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d::default());
 
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
@@ -165,7 +178,7 @@ pub fn cursor_pos(
         // any transforms on the camera. This is done by projecting the cursor position into
         // camera space (world space).
         for (cam_t, cam) in camera_q.iter() {
-            if let Some(pos) = cam.viewport_to_world_2d(cam_t, cursor_moved.position) {
+            if let Ok(pos) = cam.viewport_to_world_2d(cam_t, cursor_moved.position) {
                 *cursor_pos = CursorPos(pos);
             }
         }

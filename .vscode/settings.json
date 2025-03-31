@@ -8,5 +8,5 @@
   "files.trimTrailingWhitespace": true,
   "editor.semanticHighlighting.enabled": true,
   "files.eol": "\n",
-  "cSpell.words": ["tilemap"]
+  "cSpell.words": ["Egui", "tilemap"]
 }
