@@ -70,7 +70,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-#[derive(Debug, Clone, Copy, Component, Default)]
+#[derive(Debug, Clone, Copy, Component, Default, PartialEq, Eq)]
 
 enum TileState {
     #[default]
@@ -78,6 +78,16 @@ enum TileState {
     Wall,
     Start,
     End,
+    Queued,
+    Visited,
+}
+
+impl TileState {
+    fn change_from(&mut self, from: TileState, to: TileState) {
+        if *self == from {
+            *self = to;
+        }
+    }
 }
 
 fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>>) {
@@ -88,6 +98,8 @@ fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>
             TileState::Wall => basic::WHITE,
             TileState::Start => basic::GREEN,
             TileState::End => basic::RED,
+            TileState::Queued => basic::AQUA,
+            TileState::Visited => basic::BLUE,
         }
         .into();
     }

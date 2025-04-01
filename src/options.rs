@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TileStorage;
 use bevy_egui::{
     egui::{Slider, Window},
     EguiContexts,
@@ -26,9 +27,14 @@ fn options_menu(
     mut pathfinder: ResMut<Pathfinder>,
     mut options: ResMut<Options>,
     mut tiles: Query<&mut TileState>,
+    storage: Query<&TileStorage>,
 ) {
     Window::new("Options").show(contexts.ctx_mut(), |ui| {
+        let spacing = 20.0;
+
+        ui.add_space(spacing);
         ui.heading("Algorithm");
+        ui.separator();
         {
             let mut restart = false;
 
@@ -61,23 +67,25 @@ fn options_menu(
             }
         }
 
-        ui.separator();
+        ui.add_space(spacing);
         ui.heading("Pathfinder");
+        ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Restart").clicked() {
                 pathfinder.restart(options.algorithm);
             };
 
             if ui.button("Step").clicked() {
-                pathfinder.step();
+                pathfinder.step(storage.single(), tiles.reborrow());
             };
 
             ui.checkbox(&mut options.auto_enabled, "Auto");
         });
         ui.add(Slider::new(&mut options.auto_speed, 0..=10).text("Speed"));
 
-        ui.separator();
+        ui.add_space(spacing);
         ui.heading("Map");
+        ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Clear All").clicked() {
                 for mut tile in tiles.iter_mut() {
@@ -91,5 +99,7 @@ fn options_menu(
                 }
             }
         });
+
+        ui.add_space(spacing);
     });
 }

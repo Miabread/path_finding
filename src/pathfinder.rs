@@ -1,7 +1,10 @@
 use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 use rand::seq::IteratorRandom;
-use std::collections::{BinaryHeap, HashSet, VecDeque};
+use std::{
+    collections::{BinaryHeap, HashSet, VecDeque},
+    ops::ControlFlow,
+};
 
 use crate::TileState;
 
@@ -16,7 +19,7 @@ fn update_endpoints(
 ) {
     for (state, pos) in tile_q.iter_mut() {
         pathfinder.start.remove(pos);
-        pathfinder.goal.remove(pos);
+        pathfinder.goals.remove(pos);
 
         match state {
             TileState::Start => {
@@ -24,7 +27,7 @@ fn update_endpoints(
             }
 
             TileState::End => {
-                pathfinder.start.insert(*pos);
+                pathfinder.goals.insert(*pos);
             }
 
             _ => {}
@@ -36,11 +39,13 @@ fn update_endpoints(
 pub struct Pathfinder {
     algorithm: Option<Box<dyn Algorithm + Sync + Send>>,
     start: HashSet<TilePos>,
-    goal: HashSet<TilePos>,
+    goals: HashSet<TilePos>,
+    step: usize,
 }
 
 impl Pathfinder {
     pub fn restart(&mut self, algorithm: AlgorithmOption) {
+        self.step = 0;
         self.algorithm = Some(algorithm.into());
 
         if let Some(start) = self.start.iter().choose(&mut rand::rng()) {
@@ -48,9 +53,13 @@ impl Pathfinder {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self, storage: &TileStorage, tiles: Query<&mut TileState>) {
         if let Some(algorithm) = &mut self.algorithm {
-            algorithm.step(&self.goal);
+            dbg!(self.step);
+            self.step += 1;
+            if algorithm.step(&self.goals, storage, tiles).is_break() {
+                self.algorithm = None;
+            }
         }
     }
 }
@@ -77,27 +86,110 @@ impl From<AlgorithmOption> for Box<dyn Algorithm + Send + Sync> {
 
 trait Algorithm {
     fn start(&mut self, start: TilePos);
-    fn step(&mut self, goals: &HashSet<TilePos>);
+
+    fn step(
+        &mut self,
+        goals: &HashSet<TilePos>,
+        storage: &TileStorage,
+        tiles: Query<&mut TileState>,
+    ) -> ControlFlow<()>;
+}
+
+fn neighbors(TilePos { x, y }: TilePos) -> [TilePos; 4] {
+    [
+        TilePos {
+            x: x.saturating_add(1),
+            y,
+        },
+        TilePos {
+            x: x.saturating_sub(1),
+            y,
+        },
+        TilePos {
+            x,
+            y: y.saturating_add(1),
+        },
+        TilePos {
+            x,
+            y: y.saturating_sub(1),
+        },
+    ]
 }
 
 #[derive(Debug, Default)]
 struct BreadthFirst {
     queue: VecDeque<TilePos>,
+    visited: HashSet<TilePos>,
 }
 
 impl Algorithm for BreadthFirst {
     fn start(&mut self, start: TilePos) {
         self.queue.push_back(start);
+        self.visited.insert(start);
     }
 
-    fn step(&mut self, goals: &HashSet<TilePos>) {
-        todo!()
+    fn step(
+        &mut self,
+        goals: &HashSet<TilePos>,
+        storage: &TileStorage,
+        mut tiles: Query<&mut TileState>,
+    ) -> ControlFlow<()> {
+        let Some(tile) = self.queue.pop_front() else {
+            return ControlFlow::Break(());
+        };
+
+        println!("tile ({},{})", tile.x, tile.y);
+
+        if goals.contains(&tile) {
+            return ControlFlow::Break(());
+        }
+
+        for neighbor in neighbors(tile) {
+            if self.visited.contains(&neighbor) {
+                println!("neighbor ({},{}) skip", neighbor.x, neighbor.y);
+                continue;
+            }
+            assert!(!self.visited.insert(tile));
+
+            println!("neighbor ({},{})", neighbor.x, neighbor.y);
+
+            let Some(entity) = storage.get(&neighbor) else {
+                continue;
+            };
+
+            self.queue.push_back(neighbor);
+
+            tiles
+                .get_mut(entity)
+                .unwrap()
+                .change_from(TileState::Empty, TileState::Queued);
+        }
+
+        tiles
+            .get_mut(storage.get(&tile).unwrap())
+            .unwrap()
+            .change_from(TileState::Queued, TileState::Visited);
+
+        print!("queue [");
+        for tile in self.queue.iter() {
+            print!("({},{}) ", tile.x, tile.y);
+        }
+        println!("]");
+
+        print!("visited [");
+        for tile in self.visited.iter() {
+            print!("({},{}) ", tile.x, tile.y);
+        }
+        println!("]");
+
+        ControlFlow::Continue(())
     }
 }
 
 #[derive(Debug, Default)]
 struct AStar {
     queue: BinaryHeap<TilePos>,
+    visited: HashSet<TilePos>,
 }
 
 impl Algorithm for AStar {
@@ -105,7 +197,12 @@ impl Algorithm for AStar {
         self.queue.push(start);
     }
 
-    fn step(&mut self, goals: &HashSet<TilePos>) {
+    fn step(
+        &mut self,
+        goals: &HashSet<TilePos>,
+        storage: &TileStorage,
+        tiles: Query<&mut TileState>,
+    ) -> ControlFlow<()> {
         todo!()
     }
 }
@@ -113,6 +210,7 @@ impl Algorithm for AStar {
 #[derive(Debug, Default)]
 struct DepthFirst {
     queue: Vec<TilePos>,
+    visited: HashSet<TilePos>,
 }
 
 impl Algorithm for DepthFirst {
@@ -120,7 +218,12 @@ impl Algorithm for DepthFirst {
         self.queue.push(start);
     }
 
-    fn step(&mut self, goals: &HashSet<TilePos>) {
+    fn step(
+        &mut self,
+        goals: &HashSet<TilePos>,
+        storage: &TileStorage,
+        tiles: Query<&mut TileState>,
+    ) -> ControlFlow<()> {
         todo!()
     }
 }
@@ -128,6 +231,7 @@ impl Algorithm for DepthFirst {
 #[derive(Debug, Default)]
 struct Random {
     queue: Vec<TilePos>,
+    visited: HashSet<TilePos>,
 }
 
 impl Algorithm for Random {
@@ -135,7 +239,12 @@ impl Algorithm for Random {
         self.queue.push(start);
     }
 
-    fn step(&mut self, goals: &HashSet<TilePos>) {
+    fn step(
+        &mut self,
+        goals: &HashSet<TilePos>,
+        storage: &TileStorage,
+        tiles: Query<&mut TileState>,
+    ) -> ControlFlow<()> {
         todo!()
     }
 }
