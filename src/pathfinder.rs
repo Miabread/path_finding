@@ -149,7 +149,7 @@ impl Algorithm for BreadthFirst {
 
             self.visited.insert(neighbor);
 
-            let Some(entity) = storage.get(&neighbor) else {
+            let Some(entity) = storage.checked_get(&neighbor) else {
                 continue;
             };
 
@@ -162,7 +162,7 @@ impl Algorithm for BreadthFirst {
         }
 
         tiles
-            .get_mut(storage.get(&tile).unwrap())
+            .get_mut(storage.checked_get(&tile).unwrap())
             .unwrap()
             .change_from(TileState::Queued, TileState::Visited);
 
@@ -238,7 +238,7 @@ impl Algorithm for DepthFirst {
         }
 
         tiles
-            .get_mut(storage.get(&tile).unwrap())
+            .get_mut(storage.checked_get(&tile).unwrap())
             .unwrap()
             .change_from(TileState::Queued, TileState::Visited);
 
@@ -293,7 +293,7 @@ impl Algorithm for Random {
         }
 
         tiles
-            .get_mut(storage.get(&tile).unwrap())
+            .get_mut(storage.checked_get(&tile).unwrap())
             .unwrap()
             .change_from(TileState::Queued, TileState::Visited);
 
