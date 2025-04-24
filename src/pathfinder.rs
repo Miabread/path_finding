@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
-use rand::seq::IteratorRandom;
+use rand::{rng, seq::IteratorRandom};
 use std::{
     collections::{BinaryHeap, HashSet, VecDeque},
     ops::ControlFlow,
@@ -179,13 +179,14 @@ struct AStar {
 impl Algorithm for AStar {
     fn start(&mut self, start: TilePos) {
         self.queue.push(start);
+        self.visited.insert(start);
     }
 
     fn step(
         &mut self,
-        goals: &HashSet<TilePos>,
-        storage: &TileStorage,
-        tiles: Query<&mut TileState>,
+        _goals: &HashSet<TilePos>,
+        _storage: &TileStorage,
+        _tiles: Query<&mut TileState>,
     ) -> ControlFlow<()> {
         todo!()
     }
@@ -254,14 +255,48 @@ struct Random {
 impl Algorithm for Random {
     fn start(&mut self, start: TilePos) {
         self.queue.push(start);
+        self.visited.insert(start);
     }
 
     fn step(
         &mut self,
         goals: &HashSet<TilePos>,
         storage: &TileStorage,
-        tiles: Query<&mut TileState>,
+        mut tiles: Query<&mut TileState>,
     ) -> ControlFlow<()> {
-        todo!()
+        let Some((i, &tile)) = self.queue.iter().enumerate().choose(&mut rng()) else {
+            return ControlFlow::Break(());
+        };
+        self.queue.remove(i);
+
+        if goals.contains(&tile) {
+            return ControlFlow::Break(());
+        }
+
+        for neighbor in neighbors(tile) {
+            if self.visited.contains(&neighbor) {
+                continue;
+            }
+
+            self.visited.insert(neighbor);
+
+            let Some(entity) = storage.checked_get(&neighbor) else {
+                continue;
+            };
+
+            self.queue.push(neighbor);
+
+            tiles
+                .get_mut(entity)
+                .unwrap()
+                .change_from(TileState::Empty, TileState::Queued);
+        }
+
+        tiles
+            .get_mut(storage.get(&tile).unwrap())
+            .unwrap()
+            .change_from(TileState::Queued, TileState::Visited);
+
+        ControlFlow::Continue(())
     }
 }
