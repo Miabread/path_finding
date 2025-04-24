@@ -153,12 +153,15 @@ impl Algorithm for BreadthFirst {
                 continue;
             };
 
+            let mut neighbor_state = tiles.get_mut(entity).unwrap();
+
+            if *neighbor_state == TileState::Wall {
+                continue;
+            }
+
             self.queue.push_back(neighbor);
 
-            tiles
-                .get_mut(entity)
-                .unwrap()
-                .change_from(TileState::Empty, TileState::Queued);
+            neighbor_state.change_from(TileState::Empty, TileState::Queued);
         }
 
         tiles
@@ -229,12 +232,15 @@ impl Algorithm for DepthFirst {
                 continue;
             };
 
+            let mut neighbor_state = tiles.get_mut(entity).unwrap();
+
+            if *neighbor_state == TileState::Wall {
+                continue;
+            }
+
             self.queue.push(neighbor);
 
-            tiles
-                .get_mut(entity)
-                .unwrap()
-                .change_from(TileState::Empty, TileState::Queued);
+            neighbor_state.change_from(TileState::Empty, TileState::Queued);
         }
 
         tiles
@@ -284,12 +290,15 @@ impl Algorithm for Random {
                 continue;
             };
 
+            let mut neighbor_state = tiles.get_mut(entity).unwrap();
+
+            if *neighbor_state == TileState::Wall {
+                continue;
+            }
+
             self.queue.push(neighbor);
 
-            tiles
-                .get_mut(entity)
-                .unwrap()
-                .change_from(TileState::Empty, TileState::Queued);
+            neighbor_state.change_from(TileState::Empty, TileState::Queued);
         }
 
         tiles
