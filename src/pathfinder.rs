@@ -55,7 +55,7 @@ impl Pathfinder {
 
     pub fn step(&mut self, storage: &TileStorage, tiles: Query<&mut TileState>) {
         if let Some(algorithm) = &mut self.algorithm {
-            dbg!(self.step);
+            debug!("pathfinder step = {}", self.step);
             self.step += 1;
             if algorithm.step(&self.goals, storage, tiles).is_break() {
                 self.algorithm = None;
@@ -138,20 +138,16 @@ impl Algorithm for BreadthFirst {
             return ControlFlow::Break(());
         };
 
-        println!("tile ({},{})", tile.x, tile.y);
-
         if goals.contains(&tile) {
             return ControlFlow::Break(());
         }
 
         for neighbor in neighbors(tile) {
             if self.visited.contains(&neighbor) {
-                println!("neighbor ({},{}) skip", neighbor.x, neighbor.y);
                 continue;
             }
-            assert!(!self.visited.insert(tile));
 
-            println!("neighbor ({},{})", neighbor.x, neighbor.y);
+            self.visited.insert(neighbor);
 
             let Some(entity) = storage.get(&neighbor) else {
                 continue;
@@ -169,18 +165,6 @@ impl Algorithm for BreadthFirst {
             .get_mut(storage.get(&tile).unwrap())
             .unwrap()
             .change_from(TileState::Queued, TileState::Visited);
-
-        print!("queue [");
-        for tile in self.queue.iter() {
-            print!("({},{}) ", tile.x, tile.y);
-        }
-        println!("]");
-
-        print!("visited [");
-        for tile in self.visited.iter() {
-            print!("({},{}) ", tile.x, tile.y);
-        }
-        println!("]");
 
         ControlFlow::Continue(())
     }
@@ -216,15 +200,48 @@ struct DepthFirst {
 impl Algorithm for DepthFirst {
     fn start(&mut self, start: TilePos) {
         self.queue.push(start);
+        self.visited.insert(start);
     }
 
     fn step(
         &mut self,
         goals: &HashSet<TilePos>,
         storage: &TileStorage,
-        tiles: Query<&mut TileState>,
+        mut tiles: Query<&mut TileState>,
     ) -> ControlFlow<()> {
-        todo!()
+        let Some(tile) = self.queue.pop() else {
+            return ControlFlow::Break(());
+        };
+
+        if goals.contains(&tile) {
+            return ControlFlow::Break(());
+        }
+
+        for neighbor in neighbors(tile) {
+            if self.visited.contains(&neighbor) {
+                continue;
+            }
+
+            self.visited.insert(neighbor);
+
+            let Some(entity) = storage.checked_get(&neighbor) else {
+                continue;
+            };
+
+            self.queue.push(neighbor);
+
+            tiles
+                .get_mut(entity)
+                .unwrap()
+                .change_from(TileState::Empty, TileState::Queued);
+        }
+
+        tiles
+            .get_mut(storage.get(&tile).unwrap())
+            .unwrap()
+            .change_from(TileState::Queued, TileState::Visited);
+
+        ControlFlow::Continue(())
     }
 }
 
