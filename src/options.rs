@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileStorage;
 use bevy_egui::{
-    egui::{Slider, Window},
     EguiContexts,
+    egui::{Grid, RichText, Slider, Window},
 };
 
 use crate::{
-    pathfinder::{AlgorithmOption, Pathfinder},
     TileState,
+    pathfinder::{AlgorithmOption, Pathfinder},
 };
 
 pub fn options_plugin(app: &mut App) {
@@ -37,34 +37,62 @@ fn options_menu(
         let spacing = 20.0;
 
         ui.add_space(spacing);
-        ui.heading("Algorithm");
+        ui.heading(format!("Algorithm (step {})", pathfinder.step));
         ui.separator();
         {
             let mut restart = false;
 
-            restart |= ui
-                .radio_value(
-                    &mut options.algorithm,
-                    AlgorithmOption::BreadthFirst,
-                    "Dijkstra (Breadth First)",
-                )
-                .changed();
+            Grid::new("algorithm").show(ui, |ui| {
+                for heading in [
+                    "Algorithm",
+                    "Also Known As",
+                    "Data Structure",
+                    "Prioritizes",
+                ] {
+                    ui.label(RichText::new(heading).underline());
+                }
+                ui.end_row();
 
-            restart |= ui
-                .radio_value(&mut options.algorithm, AlgorithmOption::AStar, "A*")
-                .changed();
+                restart |= ui
+                    .radio_value(
+                        &mut options.algorithm,
+                        AlgorithmOption::BreadthFirst,
+                        "Dijkstra",
+                    )
+                    .changed();
+                ui.label("Breadth First");
+                ui.label("Queue");
+                ui.label("Oldest");
+                ui.end_row();
 
-            restart |= ui
-                .radio_value(
-                    &mut options.algorithm,
-                    AlgorithmOption::DepthFirst,
-                    "Depth First",
-                )
-                .changed();
+                restart |= ui
+                    .radio_value(&mut options.algorithm, AlgorithmOption::AStar, "A*")
+                    .changed();
+                ui.label("Heuristic");
+                ui.label("Binary Heap");
+                ui.label("Best");
+                ui.end_row();
 
-            restart |= ui
-                .radio_value(&mut options.algorithm, AlgorithmOption::Random, "Random")
-                .changed();
+                restart |= ui
+                    .radio_value(
+                        &mut options.algorithm,
+                        AlgorithmOption::DepthFirst,
+                        "Backtracking",
+                    )
+                    .changed();
+                ui.label("Depth First");
+                ui.label("Stack");
+                ui.label("Newest");
+                ui.end_row();
+
+                restart |= ui
+                    .radio_value(&mut options.algorithm, AlgorithmOption::Random, "Random")
+                    .changed();
+                ui.label("Bogo");
+                ui.label("Array");
+                ui.label("Random");
+                ui.end_row();
+            });
 
             if restart {
                 restart_pathfinder(&mut options, &mut pathfinder, &mut tiles, None);
@@ -72,7 +100,14 @@ fn options_menu(
         }
 
         ui.add_space(spacing);
-        ui.heading("Pathfinder");
+        ui.heading(format!(
+            "Pathfinder ({})",
+            if pathfinder.complete {
+                "complete"
+            } else {
+                "running"
+            }
+        ));
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Restart").clicked() {
@@ -84,8 +119,9 @@ fn options_menu(
             };
 
             ui.checkbox(&mut options.auto_enabled, "Auto");
+
+            ui.add(Slider::new(&mut options.auto_speed, 0..=MAX_AUTO_SPEED).text("Speed"));
         });
-        ui.add(Slider::new(&mut options.auto_speed, 0..=MAX_AUTO_SPEED).text("Speed"));
 
         ui.add_space(spacing);
         ui.heading("Map");

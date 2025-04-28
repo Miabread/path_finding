@@ -56,8 +56,8 @@ pub struct Pathfinder {
     start: HashSet<TilePos>,
     goals: HashSet<TilePos>,
 
-    step: usize,
-    complete: bool,
+    pub step: usize,
+    pub complete: bool,
 }
 
 impl Pathfinder {
@@ -74,7 +74,7 @@ impl Pathfinder {
             return;
         }
 
-        debug!("VVVVV pathfinder step start = {} VVVVV", self.step);
+        debug!("----- pathfinder step start = {} -----", self.step);
 
         if self.visited.is_empty() {
             if let Some(&start) = self.start.iter().choose(&mut rand::rng()) {
@@ -98,7 +98,7 @@ impl Pathfinder {
             self.complete = true;
         }
 
-        debug!("^^^^^ pathfinder step done = {} ^^^^^", self.step);
+        debug!("----- pathfinder step done = {} -----", self.step);
         self.step += 1;
     }
 }
