@@ -7,7 +7,7 @@ use bevy_egui::{
 
 use crate::{
     TileState,
-    generate::{generate_flat, generate_maze},
+    generate::{generate_flat, generate_maze, generate_noise},
     pathfinder::{AlgorithmOption, Pathfinder},
 };
 
@@ -22,9 +22,13 @@ const MAX_AUTO_SPEED: usize = 20;
 #[derive(Debug, Resource, Default)]
 struct Options {
     algorithm: AlgorithmOption,
+
     auto_enabled: bool,
     auto_speed: usize,
     current_tick: usize,
+
+    noise_scale: f64,
+    noise_threshold: f64,
 }
 
 fn options_menu(
@@ -139,11 +143,23 @@ fn options_menu(
                 generate_flat(tiles.reborrow(), TileState::Wall);
             }
 
+            if ui.button("Noise").clicked() {
+                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+                generate_noise(
+                    tiles.reborrow(),
+                    tiles_pos.reborrow(),
+                    options.noise_scale,
+                    options.noise_threshold,
+                );
+            }
+
             if ui.button("Maze").clicked() {
                 restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
                 generate_maze(tiles.reborrow(), tiles_pos.reborrow(), storage)
             }
         });
+        ui.add(Slider::new(&mut options.noise_scale, 1.0..=10.0).text("Scale"));
+        ui.add(Slider::new(&mut options.noise_threshold, -1.0..=1.0).text("Threshold"));
 
         ui.add_space(spacing);
     });

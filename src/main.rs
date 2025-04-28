@@ -101,7 +101,7 @@ fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>
             TileState::Wall => basic::WHITE,
             TileState::Start => basic::GREEN,
             TileState::Goal => basic::RED,
-            TileState::Queued => basic::BLUE,
+            TileState::Queued => basic::GRAY.lighter(0.2),
             TileState::Visited(distance) => {
                 let ratio = *distance as f32 / MAP_SIZE as f32;
                 Color::srgb(ratio, 1.0, 1.0 - ratio).into()

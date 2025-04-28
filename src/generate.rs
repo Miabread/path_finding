@@ -2,12 +2,33 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 use maze_generator::prelude::*;
 use maze_generator::recursive_backtracking::RbGenerator;
+use noise::{NoiseFn, Perlin};
+use rand::{Rng, rng};
 
 use crate::{MAP_SIZE, TileState};
 
 pub fn generate_flat(mut tiles: Query<&mut TileState>, fill: TileState) {
     for mut tile in tiles.iter_mut() {
         *tile = fill;
+    }
+}
+
+pub fn generate_noise(
+    mut tile_states: Query<&mut TileState>,
+    mut tile_pos: Query<&TilePos>,
+    scale: f64,
+    threshold: f64,
+) {
+    generate_flat(tile_states.reborrow(), TileState::Empty);
+
+    let noise = Perlin::new(rng().random());
+
+    let mut lens = tile_pos.join::<_, (&mut TileState, &TilePos)>(&mut tile_states);
+
+    for (mut state, &TilePos { x, y }) in lens.query().iter_mut() {
+        if noise.get([x as f64 / scale + 0.5, y as f64 / scale + 0.5]) > threshold {
+            *state = TileState::Wall;
+        }
     }
 }
 
