@@ -1,3 +1,4 @@
+mod algorithm;
 mod generate;
 mod input;
 mod options;

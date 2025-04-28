@@ -1,18 +1,13 @@
-mod astar;
-mod breadth_first;
-mod depth_first;
-mod random;
-
-use astar::AStar;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
-use breadth_first::BreadthFirst;
-use depth_first::DepthFirst;
 use rand::seq::IteratorRandom;
-use random::Random;
 use std::{collections::HashSet, ops::ControlFlow};
 
-use crate::{TileState, tile::Tile};
+use crate::{
+    TileState,
+    algorithm::{Algorithm, AlgorithmOption},
+    tile::Tile,
+};
 
 pub fn pathfinder_plugin(app: &mut App) {
     app.init_resource::<Pathfinder>()
@@ -163,29 +158,4 @@ impl Default for Pathfinder {
             complete: Default::default(),
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum AlgorithmOption {
-    #[default]
-    BreadthFirst,
-    AStar,
-    DepthFirst,
-    Random,
-}
-
-impl From<AlgorithmOption> for Box<dyn Algorithm + Send + Sync> {
-    fn from(value: AlgorithmOption) -> Self {
-        match value {
-            AlgorithmOption::BreadthFirst => Box::new(BreadthFirst::default()),
-            AlgorithmOption::AStar => Box::new(AStar::default()),
-            AlgorithmOption::DepthFirst => Box::new(DepthFirst::default()),
-            AlgorithmOption::Random => Box::new(Random::default()),
-        }
-    }
-}
-
-trait Algorithm {
-    fn insert(&mut self, tile: Tile);
-    fn next(&mut self) -> Option<Tile>;
 }

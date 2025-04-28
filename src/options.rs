@@ -7,8 +7,9 @@ use bevy_egui::{
 
 use crate::{
     TileState,
+    algorithm::AlgorithmOption,
     generate::{generate_flat, generate_maze, generate_noise},
-    pathfinder::{AlgorithmOption, Pathfinder},
+    pathfinder::Pathfinder,
 };
 
 pub fn options_plugin(app: &mut App) {
