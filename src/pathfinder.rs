@@ -10,7 +10,7 @@ use breadth_first::BreadthFirst;
 use depth_first::DepthFirst;
 use rand::seq::IteratorRandom;
 use random::Random;
-use std::{collections::HashSet, ops::ControlFlow};
+use std::{collections::HashSet, fmt::Display, ops::ControlFlow};
 
 use crate::TileState;
 
@@ -23,17 +23,24 @@ fn update_endpoints(
     mut tile_q: Query<(&TileState, &TilePos), Changed<TileState>>,
     mut pathfinder: ResMut<Pathfinder>,
 ) {
-    for (state, pos) in tile_q.iter_mut() {
-        pathfinder.start.remove(pos);
-        pathfinder.goals.remove(pos);
+    for (state, &pos) in tile_q.iter_mut() {
+        if pathfinder.start.remove(&pos) {
+            debug!("removed start tile {}", TilePosDisplay(pos));
+        }
+
+        if pathfinder.goals.remove(&pos) {
+            debug!("removed goal tile {}", TilePosDisplay(pos));
+        }
 
         match state {
             TileState::Start => {
-                pathfinder.start.insert(*pos);
+                debug!("added start tile {}", TilePosDisplay(pos));
+                pathfinder.start.insert(pos);
             }
 
             TileState::End => {
-                pathfinder.goals.insert(*pos);
+                debug!("added goal tile {}", TilePosDisplay(pos));
+                pathfinder.goals.insert(pos);
             }
 
             _ => {}
@@ -60,11 +67,6 @@ impl Pathfinder {
 
         self.step = 0;
         self.complete = false;
-
-        if let Some(&start) = self.start.iter().choose(&mut rand::rng()) {
-            self.algorithm.insert(start, &self.goals);
-            self.visited.insert(start);
-        }
     }
 
     pub fn step(&mut self, storage: &TileStorage, tiles: Query<&mut TileState>) {
@@ -72,8 +74,17 @@ impl Pathfinder {
             return;
         }
 
-        info!("pathfinder step = {}", self.step);
-        self.step += 1;
+        debug!("VVVVV pathfinder step start = {} VVVVV", self.step);
+
+        if self.visited.is_empty() {
+            if let Some(&start) = self.start.iter().choose(&mut rand::rng()) {
+                debug!("selected start tile {}", TilePosDisplay(start));
+                self.algorithm.insert(start, &self.goals);
+                self.visited.insert(start);
+            } else {
+                debug!("no start tiles to select from");
+            }
+        }
 
         if step(
             &mut self.algorithm,
@@ -86,6 +97,9 @@ impl Pathfinder {
         {
             self.complete = true;
         }
+
+        debug!("^^^^^ pathfinder step done = {} ^^^^^", self.step);
+        self.step += 1;
     }
 }
 
@@ -114,31 +128,40 @@ fn step(
     mut tiles: Query<&mut TileState>,
 ) -> ControlFlow<()> {
     let Some(tile) = algorithm.next() else {
+        debug!("no more tiles in queue");
         return ControlFlow::Break(());
     };
 
+    debug!("stepping on tile {}", TilePosDisplay(tile));
+
     if goals.contains(&tile) {
+        debug!("reached goal {}", TilePosDisplay(tile));
         return ControlFlow::Break(());
     }
 
     for neighbor in neighbors(tile) {
         if visited.contains(&neighbor) {
+            debug!("neighbor skip {}", TilePosDisplay(neighbor));
             continue;
         }
 
         visited.insert(neighbor);
 
         let Some(entity) = storage.checked_get(&neighbor) else {
+            debug!("neighbor bounds {}", TilePosDisplay(neighbor));
             continue;
         };
 
         let mut neighbor_state = tiles.get_mut(entity).unwrap();
 
         if *neighbor_state == TileState::Wall {
+            debug!("neighbor wall {}", TilePosDisplay(neighbor));
             continue;
         }
 
-        algorithm.insert(tile, goals);
+        debug!("neighbor queue {}", TilePosDisplay(neighbor));
+
+        algorithm.insert(neighbor, goals);
 
         neighbor_state.change_from(TileState::Empty, TileState::Queued);
     }
@@ -195,4 +218,12 @@ fn neighbors(TilePos { x, y }: TilePos) -> [TilePos; 4] {
             y: y.saturating_sub(1),
         },
     ]
+}
+
+struct TilePosDisplay(TilePos);
+
+impl Display for TilePosDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.0.x, self.0.y)
+    }
 }

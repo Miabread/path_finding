@@ -1240,16 +1240,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_tiles"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_ecs_tilemap",
- "bevy_egui",
- "rand 0.9.0",
-]
-
-[[package]]
 name = "bevy_time"
 version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3758,6 +3748,16 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "path_finding"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_ecs_tilemap",
+ "bevy_egui",
+ "rand 0.9.0",
+]
 
 [[package]]
 name = "percent-encoding"
