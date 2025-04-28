@@ -1,6 +1,7 @@
 mod input;
 mod options;
 mod pathfinder;
+mod tile;
 
 use bevy::{log::LogPlugin, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
@@ -28,12 +29,17 @@ fn main() -> AppExit {
         .run()
 }
 
+const MAP_SIZE: u32 = 32;
+
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d::default());
 
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
-    let map_size = TilemapSize { x: 32, y: 32 };
+    let map_size = TilemapSize {
+        x: MAP_SIZE,
+        y: MAP_SIZE,
+    };
 
     let tilemap_entity = commands.spawn_empty().id();
 
@@ -83,15 +89,7 @@ enum TileState {
     Start,
     End,
     Queued,
-    Visited,
-}
-
-impl TileState {
-    fn change_from(&mut self, from: TileState, to: TileState) {
-        if *self == from {
-            *self = to;
-        }
-    }
+    Visited(u32),
 }
 
 fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>>) {
@@ -102,8 +100,11 @@ fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>
             TileState::Wall => basic::WHITE,
             TileState::Start => basic::GREEN,
             TileState::End => basic::RED,
-            TileState::Queued => basic::AQUA,
-            TileState::Visited => basic::BLUE,
+            TileState::Queued => basic::BLUE,
+            TileState::Visited(distance) => {
+                let ratio = *distance as f32 / MAP_SIZE as f32;
+                Color::srgb(1.0 - ratio, 1.0, ratio).into()
+            }
         }
         .into();
     }

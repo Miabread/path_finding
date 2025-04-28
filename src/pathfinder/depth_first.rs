@@ -1,19 +1,18 @@
-use bevy_ecs_tilemap::tiles::TilePos;
-use std::collections::HashSet;
+use crate::tile::Tile;
 
 use super::Algorithm;
 
 #[derive(Debug, Default)]
 pub struct DepthFirst {
-    queue: Vec<TilePos>,
+    queue: Vec<Tile>,
 }
 
 impl Algorithm for DepthFirst {
-    fn insert(&mut self, tile: TilePos, _goals: &HashSet<TilePos>) {
+    fn insert(&mut self, tile: Tile) {
         self.queue.push(tile);
     }
 
-    fn next(&mut self) -> Option<TilePos> {
+    fn next(&mut self) -> Option<Tile> {
         self.queue.pop()
     }
 }

@@ -163,8 +163,9 @@ fn restart_pathfinder(
         if let Some(fill) = fill {
             *tile = fill;
         } else {
-            tile.change_from(TileState::Queued, TileState::Empty);
-            tile.change_from(TileState::Visited, TileState::Empty);
+            if matches!(*tile, TileState::Queued | TileState::Visited(_)) {
+                *tile = TileState::Empty;
+            }
         }
     }
 

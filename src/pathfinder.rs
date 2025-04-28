@@ -10,9 +10,9 @@ use breadth_first::BreadthFirst;
 use depth_first::DepthFirst;
 use rand::seq::IteratorRandom;
 use random::Random;
-use std::{collections::HashSet, fmt::Display, ops::ControlFlow};
+use std::{collections::HashSet, ops::ControlFlow};
 
-use crate::TileState;
+use crate::{TileState, tile::Tile};
 
 pub fn pathfinder_plugin(app: &mut App) {
     app.init_resource::<Pathfinder>()
@@ -24,23 +24,23 @@ fn update_endpoints(
     mut pathfinder: ResMut<Pathfinder>,
 ) {
     for (state, &pos) in tile_q.iter_mut() {
-        if pathfinder.start.remove(&pos) {
-            debug!("removed start tile {}", TilePosDisplay(pos));
+        if pathfinder.start.remove(&Tile::zero(pos)) {
+            debug!("removed start tile {}", Tile::zero(pos));
         }
 
-        if pathfinder.goals.remove(&pos) {
-            debug!("removed goal tile {}", TilePosDisplay(pos));
+        if pathfinder.goals.remove(&Tile::zero(pos)) {
+            debug!("removed goal tile {}", Tile::zero(pos));
         }
 
         match state {
             TileState::Start => {
-                debug!("added start tile {}", TilePosDisplay(pos));
-                pathfinder.start.insert(pos);
+                debug!("added start tile {}", Tile::zero(pos));
+                pathfinder.start.insert(Tile::zero(pos));
             }
 
             TileState::End => {
-                debug!("added goal tile {}", TilePosDisplay(pos));
-                pathfinder.goals.insert(pos);
+                debug!("added goal tile {}", Tile::zero(pos));
+                pathfinder.goals.insert(Tile::zero(pos));
             }
 
             _ => {}
@@ -51,10 +51,10 @@ fn update_endpoints(
 #[derive(Resource)]
 pub struct Pathfinder {
     algorithm: Box<dyn Algorithm + Sync + Send>,
-    visited: HashSet<TilePos>,
+    visited: HashSet<Tile>,
 
-    start: HashSet<TilePos>,
-    goals: HashSet<TilePos>,
+    start: HashSet<Tile>,
+    goals: HashSet<Tile>,
 
     pub step: usize,
     pub complete: bool,
@@ -78,8 +78,8 @@ impl Pathfinder {
 
         if self.visited.is_empty() {
             if let Some(&start) = self.start.iter().choose(&mut rand::rng()) {
-                debug!("selected start tile {}", TilePosDisplay(start));
-                self.algorithm.insert(start, &self.goals);
+                debug!("selected start tile {}", start);
+                self.algorithm.insert(start);
                 self.visited.insert(start);
             } else {
                 debug!("no start tiles to select from");
@@ -104,44 +104,49 @@ impl Pathfinder {
             return ControlFlow::Break(());
         };
 
-        debug!("stepping on tile {}", TilePosDisplay(tile));
+        debug!("stepping on tile {}", tile);
 
         if self.goals.contains(&tile) {
-            debug!("reached goal {}", TilePosDisplay(tile));
+            debug!("reached goal {}", tile);
             return ControlFlow::Break(());
         }
 
-        for neighbor in neighbors(tile) {
+        for neighbor in tile.neighbors(&self.goals) {
             if self.visited.contains(&neighbor) {
-                debug!("neighbor skip {}", TilePosDisplay(neighbor));
+                debug!("neighbor skip {}", neighbor);
                 continue;
             }
 
             self.visited.insert(neighbor);
 
-            let Some(entity) = storage.checked_get(&neighbor) else {
-                debug!("neighbor bounds {}", TilePosDisplay(neighbor));
+            let Some(entity) = storage.checked_get(&neighbor.pos) else {
+                debug!("neighbor bounds {}", neighbor);
                 continue;
             };
 
             let mut neighbor_state = tiles.get_mut(entity).unwrap();
 
             if *neighbor_state == TileState::Wall {
-                debug!("neighbor wall {}", TilePosDisplay(neighbor));
+                debug!("neighbor wall {}", neighbor);
                 continue;
             }
 
-            debug!("neighbor queue {}", TilePosDisplay(neighbor));
+            debug!("neighbor queue {}", neighbor);
 
-            self.algorithm.insert(neighbor, &self.goals);
+            self.algorithm.insert(neighbor);
 
-            neighbor_state.change_from(TileState::Empty, TileState::Queued);
+            if *neighbor_state == TileState::Empty {
+                *neighbor_state = TileState::Queued;
+            }
         }
 
-        tiles
-            .get_mut(storage.checked_get(&tile).unwrap())
-            .unwrap()
-            .change_from(TileState::Queued, TileState::Visited);
+        let mut tile_state = tiles
+            .get_mut(storage.checked_get(&tile.pos).unwrap())
+            .unwrap();
+
+        if *tile_state == TileState::Queued {
+            *tile_state = TileState::Visited(tile.distance);
+        }
 
         ControlFlow::Continue(())
     }
@@ -181,35 +186,6 @@ impl From<AlgorithmOption> for Box<dyn Algorithm + Send + Sync> {
 }
 
 trait Algorithm {
-    fn insert(&mut self, tile: TilePos, goals: &HashSet<TilePos>);
-    fn next(&mut self) -> Option<TilePos>;
-}
-
-fn neighbors(TilePos { x, y }: TilePos) -> [TilePos; 4] {
-    [
-        TilePos {
-            x: x.saturating_add(1),
-            y,
-        },
-        TilePos {
-            x: x.saturating_sub(1),
-            y,
-        },
-        TilePos {
-            x,
-            y: y.saturating_add(1),
-        },
-        TilePos {
-            x,
-            y: y.saturating_sub(1),
-        },
-    ]
-}
-
-struct TilePosDisplay(TilePos);
-
-impl Display for TilePosDisplay {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.0.x, self.0.y)
-    }
+    fn insert(&mut self, tile: Tile);
+    fn next(&mut self) -> Option<Tile>;
 }
