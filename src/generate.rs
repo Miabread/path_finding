@@ -29,19 +29,13 @@ pub fn generate_maze(
     for (mut state, &TilePos { x, y }) in lens.query().iter_mut() {
         match (x % 2 == 0, y % 2 == 0) {
             (false, false) => {
-                *state = TileState::Visited(5);
+                *state = TileState::Wall;
             }
             (true, false) | (false, true) => {}
             (true, true) => {
                 let field = maze
                     .get_field(&Coordinates::new(x as i32 / 2, y as i32 / 2))
                     .unwrap();
-
-                match field.field_type {
-                    FieldType::Start => *state = TileState::Start,
-                    FieldType::Goal => *state = TileState::Goal,
-                    FieldType::Normal => {}
-                }
 
                 let directions = [
                     (Direction::North, x.saturating_add(1), y),
@@ -51,13 +45,14 @@ pub fn generate_maze(
                 ];
 
                 for (direction, x, y) in directions {
-                    if field.has_passage(&direction) {
-                        storage.checked_get(&TilePos::new(x, y)).map(|entity| {
-                            let mut tile = tile_states.get_mut(entity).unwrap();
-                            // assert!(!matches!(*tile, TileState::Visited(_)), "was {:?}", *tile);
-                            *tile = TileState::Visited(20);
-                        });
-                    }
+                    storage.checked_get(&TilePos::new(x, y)).map(|entity| {
+                        let mut tile = tile_states.get_mut(entity).unwrap();
+                        if field.has_passage(&direction) {
+                            *tile = TileState::Empty;
+                        } else {
+                            *tile = TileState::Wall;
+                        }
+                    });
                 }
             }
         }
