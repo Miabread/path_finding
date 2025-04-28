@@ -7,6 +7,7 @@ use bevy_egui::{
 
 use crate::{
     TileState,
+    generate::generate_flat,
     pathfinder::{AlgorithmOption, Pathfinder},
 };
 
@@ -95,7 +96,7 @@ fn options_menu(
             });
 
             if restart {
-                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles, None);
+                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles);
             }
         }
 
@@ -111,7 +112,7 @@ fn options_menu(
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Restart").clicked() {
-                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles, None);
+                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles);
             };
 
             if ui.button("Step").clicked() {
@@ -128,21 +129,13 @@ fn options_menu(
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Clear All").clicked() {
-                restart_pathfinder(
-                    &mut options,
-                    &mut pathfinder,
-                    &mut tiles,
-                    Some(TileState::Empty),
-                );
+                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles);
+                generate_flat(&mut tiles, TileState::Empty);
             }
 
             if ui.button("Fill All").clicked() {
-                restart_pathfinder(
-                    &mut options,
-                    &mut pathfinder,
-                    &mut tiles,
-                    Some(TileState::Wall),
-                );
+                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles);
+                generate_flat(&mut tiles, TileState::Wall);
             }
         });
 
@@ -154,23 +147,14 @@ fn restart_pathfinder(
     options: &mut ResMut<'_, Options>,
     pathfinder: &mut ResMut<'_, Pathfinder>,
     tiles: &mut Query<'_, '_, &mut TileState>,
-    fill: Option<TileState>,
 ) {
     options.current_tick = 0;
     pathfinder.restart(options.algorithm);
 
     for mut tile in tiles.iter_mut() {
-        if let Some(fill) = fill {
-            *tile = fill;
-        } else {
-            if matches!(*tile, TileState::Queued | TileState::Visited(_)) {
-                *tile = TileState::Empty;
-            }
+        if matches!(*tile, TileState::Queued | TileState::Visited(_)) {
+            *tile = TileState::Empty;
         }
-    }
-
-    if fill.is_some() {
-        options.auto_enabled = false;
     }
 }
 

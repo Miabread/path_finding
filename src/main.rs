@@ -1,3 +1,4 @@
+mod generate;
 mod input;
 mod options;
 mod pathfinder;
@@ -103,7 +104,7 @@ fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>
             TileState::Queued => basic::BLUE,
             TileState::Visited(distance) => {
                 let ratio = *distance as f32 / MAP_SIZE as f32;
-                Color::srgb(1.0 - ratio, 1.0, ratio).into()
+                Color::srgb(ratio, 1.0, 1.0 - ratio).into()
             }
         }
         .into();
