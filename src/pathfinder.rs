@@ -86,92 +86,78 @@ impl Pathfinder {
             }
         }
 
-        if step(
-            &mut self.algorithm,
-            &mut self.visited,
-            &self.goals,
-            storage,
-            tiles,
-        )
-        .is_break()
-        {
+        if self.step_internal(storage, tiles).is_break() {
             self.complete = true;
         }
 
         debug!("----- pathfinder step done = {} -----", self.step);
         self.step += 1;
     }
+
+    fn step_internal(
+        &mut self,
+        storage: &TileStorage,
+        mut tiles: Query<&mut TileState>,
+    ) -> ControlFlow<()> {
+        let Some(tile) = self.algorithm.next() else {
+            debug!("no more tiles in queue");
+            return ControlFlow::Break(());
+        };
+
+        debug!("stepping on tile {}", TilePosDisplay(tile));
+
+        if self.goals.contains(&tile) {
+            debug!("reached goal {}", TilePosDisplay(tile));
+            return ControlFlow::Break(());
+        }
+
+        for neighbor in neighbors(tile) {
+            if self.visited.contains(&neighbor) {
+                debug!("neighbor skip {}", TilePosDisplay(neighbor));
+                continue;
+            }
+
+            self.visited.insert(neighbor);
+
+            let Some(entity) = storage.checked_get(&neighbor) else {
+                debug!("neighbor bounds {}", TilePosDisplay(neighbor));
+                continue;
+            };
+
+            let mut neighbor_state = tiles.get_mut(entity).unwrap();
+
+            if *neighbor_state == TileState::Wall {
+                debug!("neighbor wall {}", TilePosDisplay(neighbor));
+                continue;
+            }
+
+            debug!("neighbor queue {}", TilePosDisplay(neighbor));
+
+            self.algorithm.insert(neighbor, &self.goals);
+
+            neighbor_state.change_from(TileState::Empty, TileState::Queued);
+        }
+
+        tiles
+            .get_mut(storage.checked_get(&tile).unwrap())
+            .unwrap()
+            .change_from(TileState::Queued, TileState::Visited);
+
+        ControlFlow::Continue(())
+    }
 }
 
-impl FromWorld for Pathfinder {
-    fn from_world(_world: &mut World) -> Self {
-        let mut pathfinder = Self {
+impl Default for Pathfinder {
+    fn default() -> Self {
+        Self {
             algorithm: AlgorithmOption::default().into(),
-            visited: HashSet::new(),
-
-            start: HashSet::new(),
-            goals: HashSet::new(),
-
-            step: 0,
-            complete: false,
-        };
-        pathfinder.restart(AlgorithmOption::default().into());
-        pathfinder
-    }
-}
-
-fn step(
-    algorithm: &mut Box<dyn Algorithm + Send + Sync>,
-    visited: &mut HashSet<TilePos>,
-    goals: &HashSet<TilePos>,
-    storage: &TileStorage,
-    mut tiles: Query<&mut TileState>,
-) -> ControlFlow<()> {
-    let Some(tile) = algorithm.next() else {
-        debug!("no more tiles in queue");
-        return ControlFlow::Break(());
-    };
-
-    debug!("stepping on tile {}", TilePosDisplay(tile));
-
-    if goals.contains(&tile) {
-        debug!("reached goal {}", TilePosDisplay(tile));
-        return ControlFlow::Break(());
-    }
-
-    for neighbor in neighbors(tile) {
-        if visited.contains(&neighbor) {
-            debug!("neighbor skip {}", TilePosDisplay(neighbor));
-            continue;
+            visited: Default::default(),
+            start: Default::default(),
+            goals: Default::default(),
+            step: Default::default(),
+            complete: Default::default(),
         }
-
-        visited.insert(neighbor);
-
-        let Some(entity) = storage.checked_get(&neighbor) else {
-            debug!("neighbor bounds {}", TilePosDisplay(neighbor));
-            continue;
-        };
-
-        let mut neighbor_state = tiles.get_mut(entity).unwrap();
-
-        if *neighbor_state == TileState::Wall {
-            debug!("neighbor wall {}", TilePosDisplay(neighbor));
-            continue;
-        }
-
-        debug!("neighbor queue {}", TilePosDisplay(neighbor));
-
-        algorithm.insert(neighbor, goals);
-
-        neighbor_state.change_from(TileState::Empty, TileState::Queued);
     }
-
-    tiles
-        .get_mut(storage.checked_get(&tile).unwrap())
-        .unwrap()
-        .change_from(TileState::Queued, TileState::Visited);
-
-    ControlFlow::Continue(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

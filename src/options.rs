@@ -34,7 +34,7 @@ fn options_menu(
     storage: Query<&TileStorage>,
 ) {
     Window::new("Options").show(contexts.ctx_mut(), |ui| {
-        let spacing = 20.0;
+        let spacing = 10.0;
 
         ui.add_space(spacing);
         ui.heading(format!("Algorithm (step {})", pathfinder.step));
