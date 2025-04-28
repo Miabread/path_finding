@@ -38,7 +38,7 @@ fn update_endpoints(
                 pathfinder.start.insert(Tile::zero(pos));
             }
 
-            TileState::End => {
+            TileState::Goal => {
                 debug!("added goal tile {}", Tile::zero(pos));
                 pathfinder.goals.insert(Tile::zero(pos));
             }

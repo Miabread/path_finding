@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_ecs_tilemap::tiles::TileStorage;
+use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 use bevy_egui::{
     EguiContexts,
     egui::{Grid, RichText, Slider, Window},
@@ -7,7 +7,7 @@ use bevy_egui::{
 
 use crate::{
     TileState,
-    generate::generate_flat,
+    generate::{generate_flat, generate_maze},
     pathfinder::{AlgorithmOption, Pathfinder},
 };
 
@@ -32,6 +32,7 @@ fn options_menu(
     mut pathfinder: ResMut<Pathfinder>,
     mut options: ResMut<Options>,
     mut tiles: Query<&mut TileState>,
+    mut tiles_pos: Query<&TilePos>,
     storage: Query<&TileStorage>,
 ) {
     Window::new("Options").show(contexts.ctx_mut(), |ui| {
@@ -96,7 +97,7 @@ fn options_menu(
             });
 
             if restart {
-                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles);
+                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
             }
         }
 
@@ -112,7 +113,7 @@ fn options_menu(
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Restart").clicked() {
-                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles);
+                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
             };
 
             if ui.button("Step").clicked() {
@@ -129,13 +130,18 @@ fn options_menu(
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Clear All").clicked() {
-                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles);
-                generate_flat(&mut tiles, TileState::Empty);
+                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+                generate_flat(tiles.reborrow(), TileState::Empty);
             }
 
             if ui.button("Fill All").clicked() {
-                restart_pathfinder(&mut options, &mut pathfinder, &mut tiles);
-                generate_flat(&mut tiles, TileState::Wall);
+                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+                generate_flat(tiles.reborrow(), TileState::Wall);
+            }
+
+            if ui.button("Maze").clicked() {
+                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+                generate_maze(tiles.reborrow(), tiles_pos.reborrow(), storage)
             }
         });
 
@@ -144,9 +150,9 @@ fn options_menu(
 }
 
 fn restart_pathfinder(
-    options: &mut ResMut<'_, Options>,
-    pathfinder: &mut ResMut<'_, Pathfinder>,
-    tiles: &mut Query<'_, '_, &mut TileState>,
+    mut options: Mut<Options>,
+    mut pathfinder: Mut<Pathfinder>,
+    mut tiles: Query<&mut TileState>,
 ) {
     options.current_tick = 0;
     pathfinder.restart(options.algorithm);

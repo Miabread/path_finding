@@ -30,7 +30,7 @@ fn main() -> AppExit {
         .run()
 }
 
-const MAP_SIZE: u32 = 32;
+pub const MAP_SIZE: u32 = 32;
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d::default());
@@ -88,7 +88,7 @@ enum TileState {
     Empty,
     Wall,
     Start,
-    End,
+    Goal,
     Queued,
     Visited(u32),
 }
@@ -100,7 +100,7 @@ fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>
             TileState::Empty => basic::GRAY,
             TileState::Wall => basic::WHITE,
             TileState::Start => basic::GREEN,
-            TileState::End => basic::RED,
+            TileState::Goal => basic::RED,
             TileState::Queued => basic::BLUE,
             TileState::Visited(distance) => {
                 let ratio = *distance as f32 / MAP_SIZE as f32;

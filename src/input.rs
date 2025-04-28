@@ -66,7 +66,7 @@ fn mouse_paint(
     }
 
     if keyboard.just_pressed(KeyCode::KeyE) {
-        *state = TileState::End;
+        *state = TileState::Goal;
     }
 }
 
