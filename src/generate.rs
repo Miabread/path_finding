@@ -7,6 +7,14 @@ use rand::{Rng, rng};
 
 use crate::{MAP_SIZE, TileState};
 
+pub fn flush_path(mut tiles: Query<&mut TileState>) {
+    for mut tile in tiles.iter_mut() {
+        if matches!(*tile, TileState::Queued | TileState::Visited(_)) {
+            *tile = TileState::Empty;
+        }
+    }
+}
+
 pub fn generate_flat(mut tiles: Query<&mut TileState>, fill: TileState) {
     for mut tile in tiles.iter_mut() {
         *tile = fill;

@@ -8,7 +8,7 @@ use bevy_egui::{
 use crate::{
     TileState,
     algorithm::AlgorithmOption,
-    generate::{generate_flat, generate_maze, generate_noise},
+    generate::{flush_path, generate_flat, generate_maze, generate_noise},
     pathfinder::Pathfinder,
 };
 
@@ -102,7 +102,8 @@ fn options_menu(
             });
 
             if restart {
-                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+                pathfinder.restart(options.algorithm);
+                flush_path(tiles.reborrow());
             }
         }
 
@@ -118,7 +119,8 @@ fn options_menu(
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Restart").clicked() {
-                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+                pathfinder.restart(options.algorithm);
+                flush_path(tiles.reborrow());
             };
 
             if ui.button("Step").clicked() {
@@ -134,18 +136,22 @@ fn options_menu(
         ui.heading("Map");
         ui.separator();
         ui.horizontal(|ui| {
-            if ui.button("Clear All").clicked() {
-                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+            if ui.button("Flush").clicked() {
+                flush_path(tiles.reborrow());
+            }
+
+            if ui.button("Empty").clicked() {
+                pathfinder.restart(options.algorithm);
                 generate_flat(tiles.reborrow(), TileState::Empty);
             }
 
-            if ui.button("Fill All").clicked() {
-                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+            if ui.button("Wall").clicked() {
+                pathfinder.restart(options.algorithm);
                 generate_flat(tiles.reborrow(), TileState::Wall);
             }
 
             if ui.button("Noise").clicked() {
-                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+                pathfinder.restart(options.algorithm);
                 generate_noise(
                     tiles.reborrow(),
                     tiles_pos.reborrow(),
@@ -155,7 +161,7 @@ fn options_menu(
             }
 
             if ui.button("Maze").clicked() {
-                restart_pathfinder(options.reborrow(), pathfinder.reborrow(), tiles.reborrow());
+                pathfinder.restart(options.algorithm);
                 generate_maze(tiles.reborrow(), tiles_pos.reborrow(), storage)
             }
         });
@@ -164,21 +170,6 @@ fn options_menu(
 
         ui.add_space(spacing);
     });
-}
-
-fn restart_pathfinder(
-    mut options: Mut<Options>,
-    mut pathfinder: Mut<Pathfinder>,
-    mut tiles: Query<&mut TileState>,
-) {
-    options.current_tick = 0;
-    pathfinder.restart(options.algorithm);
-
-    for mut tile in tiles.iter_mut() {
-        if matches!(*tile, TileState::Queued | TileState::Visited(_)) {
-            *tile = TileState::Empty;
-        }
-    }
 }
 
 fn auto_step(
