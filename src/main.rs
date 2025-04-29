@@ -15,10 +15,14 @@ use pathfinder::pathfinder_plugin;
 fn main() -> AppExit {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(LogPlugin {
-                filter: "info,wgpu_core=warn,wgpu_hal=warn,path_finding=debug".into(),
-                level: bevy::log::Level::DEBUG,
-                ..Default::default()
+            DefaultPlugins.set(if cfg!(feature = "development") {
+                LogPlugin {
+                    filter: "info,wgpu_core=warn,wgpu_hal=warn,path_finding=debug".into(),
+                    level: bevy::log::Level::DEBUG,
+                    ..Default::default()
+                }
+            } else {
+                LogPlugin::default()
             }),
             TilemapPlugin,
             EguiPlugin,
