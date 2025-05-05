@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 use bevy_egui::{
     EguiContexts,
-    egui::{Grid, RichText, Slider, Window},
+    egui::{Align, Grid, Layout, RichText, Slider, Window},
 };
 
 use crate::{
@@ -167,8 +167,27 @@ fn options_menu(
         });
         ui.add(Slider::new(&mut options.noise_scale, 1.0..=10.0).text("Scale"));
         ui.add(Slider::new(&mut options.noise_threshold, -1.0..=1.0).text("Threshold"));
+    });
 
-        ui.add_space(spacing);
+    Window::new("Controls").show(contexts.ctx_mut(), |ui| {
+        let controls = [
+            ("S", "Place Start"),
+            ("E", "Place Goal"),
+            ("Left", "Place Wall"),
+            ("Right", "Place Empty"),
+            ("Middle", "Move"),
+            ("Scroll", "Zoom"),
+        ];
+
+        Grid::new("controls").show(ui, |ui| {
+            for (key, label) in controls {
+                ui.with_layout(Layout::right_to_left(Align::default()), |ui| {
+                    ui.label(RichText::new(key).strong())
+                });
+                ui.label(label);
+                ui.end_row();
+            }
+        });
     });
 }
 
