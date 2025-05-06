@@ -20,7 +20,7 @@ pub fn options_plugin(app: &mut App) {
 
 const MAX_AUTO_SPEED: usize = 20;
 
-#[derive(Debug, Resource, Default)]
+#[derive(Debug, Resource)]
 struct Options {
     algorithm: AlgorithmOption,
 
@@ -30,6 +30,21 @@ struct Options {
 
     noise_scale: f64,
     noise_threshold: f64,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            algorithm: AlgorithmOption::default(),
+            auto_enabled: false,
+
+            auto_speed: 20,
+            current_tick: 0,
+
+            noise_scale: 5.5,
+            noise_threshold: 0.0,
+        }
+    }
 }
 
 fn options_menu(
@@ -165,8 +180,8 @@ fn options_menu(
                 generate_maze(tiles.reborrow(), tiles_pos.reborrow(), storage)
             }
         });
-        ui.add(Slider::new(&mut options.noise_scale, 1.0..=10.0).text("Scale"));
-        ui.add(Slider::new(&mut options.noise_threshold, -1.0..=1.0).text("Threshold"));
+        ui.add(Slider::new(&mut options.noise_scale, 1.0..=10.0).text("Noise Scale"));
+        ui.add(Slider::new(&mut options.noise_threshold, -1.0..=1.0).text("Noise Threshold"));
     });
 
     Window::new("Controls").show(contexts.ctx_mut(), |ui| {

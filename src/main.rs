@@ -5,7 +5,7 @@ mod options;
 mod pathfinder;
 mod tile;
 
-use bevy::{log::LogPlugin, prelude::*};
+use bevy::{asset::embedded_asset, log::LogPlugin, prelude::*, window::PrimaryWindow};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::EguiPlugin;
 use input::input_plugin;
@@ -13,34 +13,41 @@ use options::options_plugin;
 use pathfinder::pathfinder_plugin;
 
 fn main() -> AppExit {
-    App::new()
-        .add_plugins((
-            DefaultPlugins.set(if cfg!(feature = "development") {
-                LogPlugin {
-                    filter: "info,wgpu_core=warn,wgpu_hal=warn,path_finding=debug".into(),
-                    level: bevy::log::Level::DEBUG,
-                    ..Default::default()
-                }
-            } else {
-                LogPlugin::default()
-            }),
-            TilemapPlugin,
-            EguiPlugin,
-            input_plugin,
-            pathfinder_plugin,
-            options_plugin,
-        ))
-        .add_systems(Startup, startup)
-        .add_systems(Update, color_tile)
-        .run()
+    let mut app = App::new();
+
+    app.add_plugins((
+        DefaultPlugins.set(LogPlugin {
+            filter: "info,wgpu_core=warn,wgpu_hal=warn,path_finding=debug".into(),
+            level: bevy::log::Level::DEBUG,
+            ..Default::default()
+        }),
+        TilemapPlugin,
+        EguiPlugin,
+        input_plugin,
+        pathfinder_plugin,
+        options_plugin,
+    ))
+    .add_systems(Startup, startup)
+    .add_systems(Update, color_tile);
+
+    embedded_asset!(app, "../assets/tiles.png");
+
+    app.run()
 }
 
 pub const MAP_SIZE: u32 = 32;
 
-fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn startup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut window: Single<&mut Window, With<PrimaryWindow>>,
+) {
+    window.title = "Miabread/path_finding".to_string();
+
     commands.spawn(Camera2d::default());
 
-    let texture_handle: Handle<Image> = asset_server.load("tiles.png");
+    let texture_handle: Handle<Image> =
+        asset_server.load("embedded://path_finding/../assets/tiles.png");
 
     let map_size = TilemapSize {
         x: MAP_SIZE,
