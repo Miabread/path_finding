@@ -6,11 +6,10 @@ use bevy_ecs_tilemap::tiles::TilePos;
 pub struct Tile {
     pub pos: TilePos,
     pub distance: u32,
-    pub prev: Option<TilePos>,
 }
 
 impl Tile {
-    pub fn new(pos: TilePos, prev: TilePos, goals: &HashSet<Tile>) -> Self {
+    pub fn new(pos: TilePos, goals: &HashSet<Tile>) -> Self {
         let distance = goals
             .iter()
             .copied()
@@ -18,28 +17,20 @@ impl Tile {
             .min()
             .unwrap_or(0);
 
-        Self {
-            pos,
-            prev: Some(prev),
-            distance,
-        }
+        Self { pos, distance }
     }
 
     pub fn zero(pos: TilePos) -> Self {
-        Self {
-            pos,
-            prev: None,
-            distance: 0,
-        }
+        Self { pos, distance: 0 }
     }
 
     pub fn neighbors(&self, goals: &HashSet<Tile>) -> [Tile; 4] {
         let TilePos { x, y } = self.pos;
         [
-            Tile::new(TilePos::new(x.saturating_add(1), y), self.pos, goals),
-            Tile::new(TilePos::new(x.saturating_sub(1), y), self.pos, goals),
-            Tile::new(TilePos::new(x, y.saturating_add(1)), self.pos, goals),
-            Tile::new(TilePos::new(x, y.saturating_sub(1)), self.pos, goals),
+            Tile::new(TilePos::new(x.saturating_add(1), y), goals),
+            Tile::new(TilePos::new(x.saturating_sub(1), y), goals),
+            Tile::new(TilePos::new(x, y.saturating_add(1)), goals),
+            Tile::new(TilePos::new(x, y.saturating_sub(1)), goals),
         ]
     }
 }
