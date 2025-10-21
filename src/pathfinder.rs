@@ -15,10 +15,10 @@ pub fn pathfinder_plugin(app: &mut App) {
 }
 
 fn update_endpoints(
-    mut tile_q: Query<(&TileState, &TilePos), Changed<TileState>>,
+    mut tiles_query: Query<(&TileState, &TilePos), Changed<TileState>>,
     mut pathfinder: ResMut<Pathfinder>,
 ) {
-    for (state, &pos) in tile_q.iter_mut() {
+    for (state, &pos) in tiles_query.iter_mut() {
         if pathfinder.start_tiles.remove(&Tile::zero(pos)) {
             debug!("removed start tile {}", Tile::zero(pos));
         }

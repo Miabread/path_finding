@@ -13,7 +13,7 @@ impl Tile {
         let distance = goals
             .iter()
             .copied()
-            .map(|goal| distance(pos, goal.pos).abs() as u32)
+            .map(|goal| distance(pos, goal.pos))
             .min()
             .unwrap_or(0);
 
@@ -35,10 +35,10 @@ impl Tile {
     }
 }
 
-fn distance(a: TilePos, b: TilePos) -> i32 {
+fn distance(a: TilePos, b: TilePos) -> u32 {
     let x_diff = b.x as i32 - a.x as i32;
     let y_diff = b.y as i32 - a.y as i32;
-    (x_diff.pow(2) + y_diff.pow(2)).isqrt()
+    (x_diff.pow(2) + y_diff.pow(2)).isqrt().abs() as u32
 }
 
 impl PartialEq for Tile {
