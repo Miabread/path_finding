@@ -64,6 +64,11 @@ impl Pathfinder {
         self.complete = false;
     }
 
+    pub fn stop(&mut self, algorithm: AlgorithmOption) {
+        self.restart(algorithm);
+        self.complete = true;
+    }
+
     pub fn step(
         &mut self,
         storage: &TileStorage,

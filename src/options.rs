@@ -169,28 +169,32 @@ fn options_menu(
             }
 
             if ui.button("Empty").clicked() {
-                pathfinder.restart(options.algorithm);
                 generate_flat(states.reborrow(), TileState::Empty);
+                flush_path(states.reborrow(), prevs.reborrow());
+                pathfinder.stop(options.algorithm);
             }
 
             if ui.button("Wall").clicked() {
-                pathfinder.restart(options.algorithm);
                 generate_flat(states.reborrow(), TileState::Wall);
+                flush_path(states.reborrow(), prevs.reborrow());
+                pathfinder.stop(options.algorithm);
             }
 
             if ui.button("Noise").clicked() {
-                pathfinder.restart(options.algorithm);
                 generate_noise(
                     states.reborrow(),
                     tiles_pos.reborrow(),
                     options.noise_scale,
                     options.noise_threshold,
                 );
+                flush_path(states.reborrow(), prevs.reborrow());
+                pathfinder.stop(options.algorithm);
             }
 
             if ui.button("Maze").clicked() {
-                pathfinder.restart(options.algorithm);
-                generate_maze(states.reborrow(), tiles_pos.reborrow(), storage)
+                generate_maze(states.reborrow(), tiles_pos.reborrow(), storage);
+                flush_path(states.reborrow(), prevs.reborrow());
+                pathfinder.stop(options.algorithm);
             }
         });
         ui.add(Slider::new(&mut options.noise_scale, 1.0..=10.0).text("Noise Scale"));
