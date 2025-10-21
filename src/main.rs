@@ -103,6 +103,7 @@ enum TileState {
     Goal,
     Queued,
     Visited(u32),
+    Final,
 }
 
 fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>>) {
@@ -118,6 +119,7 @@ fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>
                 let ratio = *distance as f32 / MAP_SIZE as f32;
                 Color::srgb(ratio, 1.0, 1.0 - ratio).into()
             }
+            TileState::Final => basic::BLACK,
         }
         .into();
     }

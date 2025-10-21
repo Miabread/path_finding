@@ -98,6 +98,18 @@ fn options_menu(
                 restart |= ui
                     .radio_value(
                         &mut options.algorithm,
+                        AlgorithmOption::ReverseAStar,
+                        "Reverse A*",
+                    )
+                    .changed();
+                ui.label("Heuristic");
+                ui.label("Binary Heap");
+                ui.label("Worst");
+                ui.end_row();
+
+                restart |= ui
+                    .radio_value(
+                        &mut options.algorithm,
                         AlgorithmOption::DepthFirst,
                         "Backtracking",
                     )

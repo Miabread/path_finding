@@ -1,5 +1,8 @@
 use rand::{rng, seq::IteratorRandom};
-use std::collections::{BinaryHeap, VecDeque};
+use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, VecDeque},
+};
 
 use crate::tile::Tile;
 
@@ -30,6 +33,21 @@ impl Algorithm for AStar {
 
     fn next(&mut self) -> Option<Tile> {
         self.queue.pop()
+    }
+}
+
+#[derive(Debug, Default)]
+struct ReverseAStar {
+    queue: BinaryHeap<Reverse<Tile>>,
+}
+
+impl Algorithm for ReverseAStar {
+    fn insert(&mut self, tile: Tile) {
+        self.queue.push(Reverse(tile));
+    }
+
+    fn next(&mut self) -> Option<Tile> {
+        self.queue.pop().map(|title| title.0)
     }
 }
 
@@ -75,6 +93,7 @@ pub enum AlgorithmOption {
     #[default]
     BreadthFirst,
     AStar,
+    ReverseAStar,
     DepthFirst,
     Random,
 }
@@ -84,6 +103,7 @@ impl From<AlgorithmOption> for Box<dyn Algorithm + Send + Sync> {
         match value {
             AlgorithmOption::BreadthFirst => Box::new(BreadthFirst::default()),
             AlgorithmOption::AStar => Box::new(AStar::default()),
+            AlgorithmOption::ReverseAStar => Box::new(ReverseAStar::default()),
             AlgorithmOption::DepthFirst => Box::new(DepthFirst::default()),
             AlgorithmOption::Random => Box::new(Random::default()),
         }
