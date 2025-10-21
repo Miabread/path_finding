@@ -131,7 +131,7 @@ fn options_menu(
 
             if restart {
                 pathfinder.restart(options.algorithm);
-                flush_path(states.reborrow());
+                flush_path(states.reborrow(), prevs.reborrow());
             }
         }
 
@@ -148,7 +148,7 @@ fn options_menu(
         ui.horizontal(|ui| {
             if ui.button("Restart").clicked() {
                 pathfinder.restart(options.algorithm);
-                flush_path(states.reborrow());
+                flush_path(states.reborrow(), prevs.reborrow());
             };
 
             if ui.button("Step").clicked() {
@@ -165,7 +165,7 @@ fn options_menu(
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Flush").clicked() {
-                flush_path(states.reborrow());
+                flush_path(states.reborrow(), prevs.reborrow());
             }
 
             if ui.button("Empty").clicked() {

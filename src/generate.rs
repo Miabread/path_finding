@@ -5,19 +5,26 @@ use maze_generator::recursive_backtracking::RbGenerator;
 use noise::{NoiseFn, Perlin};
 use rand::{Rng, rng};
 
-use crate::{MAP_SIZE, TileState};
+use crate::{MAP_SIZE, TilePrev, TileState};
 
-pub fn flush_path(mut tiles: Query<&mut TileState>) {
-    for mut tile in tiles.iter_mut() {
-        if matches!(*tile, TileState::Queued | TileState::Visited(_)) {
-            *tile = TileState::Empty;
+pub fn flush_path(mut states: Query<&mut TileState>, mut prevs: Query<&mut TilePrev>) {
+    for mut state in states.iter_mut() {
+        if matches!(
+            *state,
+            TileState::Queued | TileState::Visited(_) | TileState::Final
+        ) {
+            *state = TileState::Empty;
         }
+    }
+
+    for mut prev in prevs.iter_mut() {
+        prev.0 = None;
     }
 }
 
-pub fn generate_flat(mut tiles: Query<&mut TileState>, fill: TileState) {
-    for mut tile in tiles.iter_mut() {
-        *tile = fill;
+pub fn generate_flat(mut states: Query<&mut TileState>, fill: TileState) {
+    for mut state in states.iter_mut() {
+        *state = fill;
     }
 }
 
