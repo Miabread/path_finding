@@ -23,7 +23,7 @@ fn mouse_paint(
         &TileStorage,
         &Transform,
     )>,
-    mut states: Query<&mut TileState>,
+    mut tile_states: Query<&mut TileState>,
     mouse: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
@@ -51,22 +51,22 @@ fn mouse_paint(
         return;
     };
 
-    let mut state = states.get_mut(tile_entity).unwrap();
+    let mut tile_state = tile_states.get_mut(tile_entity).unwrap();
 
     if mouse.pressed(MouseButton::Left) {
-        *state = TileState::Wall;
+        *tile_state = TileState::Wall;
     };
 
     if mouse.pressed(MouseButton::Right) {
-        *state = TileState::Empty;
+        *tile_state = TileState::Empty;
     }
 
     if keyboard.just_pressed(KeyCode::KeyS) {
-        *state = TileState::Start;
+        *tile_state = TileState::Start;
     }
 
     if keyboard.just_pressed(KeyCode::KeyE) {
-        *state = TileState::Goal;
+        *tile_state = TileState::Goal;
     }
 }
 

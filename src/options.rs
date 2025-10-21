@@ -6,7 +6,7 @@ use bevy_egui::{
 };
 
 use crate::{
-    TilePrev, TileState,
+    TileParent, TileState,
     algorithm::AlgorithmOption,
     generate::{flush_path, generate_flat, generate_maze, generate_noise},
     pathfinder::Pathfinder,
@@ -51,9 +51,9 @@ fn options_menu(
     mut contexts: EguiContexts,
     mut pathfinder: ResMut<Pathfinder>,
     mut options: ResMut<Options>,
-    mut states: Query<&mut TileState>,
-    mut prevs: Query<&mut TilePrev>,
-    mut tiles_pos: Query<&TilePos>,
+    mut tile_states: Query<&mut TileState>,
+    mut tile_parents: Query<&mut TileParent>,
+    mut tiles_positions: Query<&TilePos>,
     storage: Query<&TileStorage>,
 ) {
     Window::new("Options").show(contexts.ctx_mut(), |ui| {
@@ -131,7 +131,7 @@ fn options_menu(
 
             if restart {
                 pathfinder.restart(options.algorithm);
-                flush_path(states.reborrow(), prevs.reborrow());
+                flush_path(tile_states.reborrow(), tile_parents.reborrow());
             }
         }
 
@@ -148,11 +148,15 @@ fn options_menu(
         ui.horizontal(|ui| {
             if ui.button("Restart").clicked() {
                 pathfinder.restart(options.algorithm);
-                flush_path(states.reborrow(), prevs.reborrow());
+                flush_path(tile_states.reborrow(), tile_parents.reborrow());
             };
 
             if ui.button("Step").clicked() {
-                pathfinder.step(storage.single(), states.reborrow(), prevs.reborrow());
+                pathfinder.step(
+                    storage.single(),
+                    tile_states.reborrow(),
+                    tile_parents.reborrow(),
+                );
             };
 
             ui.checkbox(&mut options.auto_enabled, "Auto");
@@ -165,35 +169,35 @@ fn options_menu(
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Flush").clicked() {
-                flush_path(states.reborrow(), prevs.reborrow());
+                flush_path(tile_states.reborrow(), tile_parents.reborrow());
             }
 
             if ui.button("Empty").clicked() {
-                generate_flat(states.reborrow(), TileState::Empty);
-                flush_path(states.reborrow(), prevs.reborrow());
+                generate_flat(tile_states.reborrow(), TileState::Empty);
+                flush_path(tile_states.reborrow(), tile_parents.reborrow());
                 pathfinder.stop(options.algorithm);
             }
 
             if ui.button("Wall").clicked() {
-                generate_flat(states.reborrow(), TileState::Wall);
-                flush_path(states.reborrow(), prevs.reborrow());
+                generate_flat(tile_states.reborrow(), TileState::Wall);
+                flush_path(tile_states.reborrow(), tile_parents.reborrow());
                 pathfinder.stop(options.algorithm);
             }
 
             if ui.button("Noise").clicked() {
                 generate_noise(
-                    states.reborrow(),
-                    tiles_pos.reborrow(),
+                    tile_states.reborrow(),
+                    tiles_positions.reborrow(),
                     options.noise_scale,
                     options.noise_threshold,
                 );
-                flush_path(states.reborrow(), prevs.reborrow());
+                flush_path(tile_states.reborrow(), tile_parents.reborrow());
                 pathfinder.stop(options.algorithm);
             }
 
             if ui.button("Maze").clicked() {
-                generate_maze(states.reborrow(), tiles_pos.reborrow(), storage);
-                flush_path(states.reborrow(), prevs.reborrow());
+                generate_maze(tile_states.reborrow(), tiles_positions.reborrow(), storage);
+                flush_path(tile_states.reborrow(), tile_parents.reborrow());
                 pathfinder.stop(options.algorithm);
             }
         });
@@ -226,9 +230,9 @@ fn options_menu(
 fn auto_step(
     mut pathfinder: ResMut<Pathfinder>,
     mut options: ResMut<Options>,
-    tiles: Query<&mut TileState>,
-    prevs: Query<&mut TilePrev>,
-    storage: Query<&TileStorage>,
+    tile_states: Query<&mut TileState>,
+    tile_parents: Query<&mut TileParent>,
+    tile_storage: Query<&TileStorage>,
 ) {
     if !options.auto_enabled {
         options.current_tick = 0;
@@ -238,6 +242,6 @@ fn auto_step(
     options.current_tick += 1;
     if options.current_tick >= (MAX_AUTO_SPEED - options.auto_speed) {
         options.current_tick = 0;
-        pathfinder.step(storage.single(), tiles, prevs);
+        pathfinder.step(tile_storage.single(), tile_states, tile_parents);
     }
 }

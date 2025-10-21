@@ -4,7 +4,7 @@ use rand::seq::IteratorRandom;
 use std::{collections::HashSet, ops::ControlFlow};
 
 use crate::{
-    TilePrev, TileState,
+    TileParent, TileState,
     algorithm::{Algorithm, AlgorithmOption},
     tile::Tile,
 };
@@ -19,23 +19,23 @@ fn update_endpoints(
     mut pathfinder: ResMut<Pathfinder>,
 ) {
     for (state, &pos) in tile_q.iter_mut() {
-        if pathfinder.start.remove(&Tile::zero(pos)) {
+        if pathfinder.start_tiles.remove(&Tile::zero(pos)) {
             debug!("removed start tile {}", Tile::zero(pos));
         }
 
-        if pathfinder.goals.remove(&Tile::zero(pos)) {
+        if pathfinder.goal_tiles.remove(&Tile::zero(pos)) {
             debug!("removed goal tile {}", Tile::zero(pos));
         }
 
         match state {
             TileState::Start => {
                 debug!("added start tile {}", Tile::zero(pos));
-                pathfinder.start.insert(Tile::zero(pos));
+                pathfinder.start_tiles.insert(Tile::zero(pos));
             }
 
             TileState::Goal => {
                 debug!("added goal tile {}", Tile::zero(pos));
-                pathfinder.goals.insert(Tile::zero(pos));
+                pathfinder.goal_tiles.insert(Tile::zero(pos));
             }
 
             _ => {}
@@ -48,8 +48,8 @@ pub struct Pathfinder {
     algorithm: Box<dyn Algorithm + Sync + Send>,
     visited: HashSet<Tile>,
 
-    start: HashSet<Tile>,
-    goals: HashSet<Tile>,
+    start_tiles: HashSet<Tile>,
+    goal_tiles: HashSet<Tile>,
 
     pub step: usize,
     pub complete: bool,
@@ -71,9 +71,9 @@ impl Pathfinder {
 
     pub fn step(
         &mut self,
-        storage: &TileStorage,
-        mut states: Query<&mut TileState>,
-        mut prevs: Query<&mut TilePrev>,
+        tile_storage: &TileStorage,
+        mut tile_states: Query<&mut TileState>,
+        mut tile_parents: Query<&mut TileParent>,
     ) {
         if self.complete {
             return;
@@ -82,33 +82,35 @@ impl Pathfinder {
         debug!("----- pathfinder step start = {} -----", self.step);
 
         if self.visited.is_empty() {
-            if let Some(&start) = self.start.iter().choose(&mut rand::rng()) {
-                debug!("selected start tile {}", start);
-                self.algorithm.insert(start);
-                self.visited.insert(start);
+            if let Some(&start_tile) = self.start_tiles.iter().choose(&mut rand::rng()) {
+                debug!("selected start tile {}", start_tile);
+                self.algorithm.insert(start_tile);
+                self.visited.insert(start_tile);
             } else {
                 debug!("no start tiles to select from");
             }
         }
 
-        if let ControlFlow::Break(mut last_pos) =
-            self.step_internal(storage, states.reborrow(), prevs.reborrow())
-        {
+        if let ControlFlow::Break(mut next_pos) = self.step_internal(
+            tile_storage,
+            tile_states.reborrow(),
+            tile_parents.reborrow(),
+        ) {
             self.complete = true;
 
-            while let Some(current_last_pos) = last_pos {
-                let Some(entity) = storage.checked_get(&current_last_pos) else {
-                    last_pos = None;
+            while let Some(current_pos) = next_pos {
+                let Some(entity) = tile_storage.checked_get(&current_pos) else {
+                    next_pos = None;
                     continue;
                 };
 
-                let mut state = states.get_mut(entity).unwrap();
+                let mut tile_state = tile_states.get_mut(entity).unwrap();
 
-                if let TileState::Visited(distance) = *state {
-                    *state = TileState::Final(distance);
+                if let TileState::Visited(distance) = *tile_state {
+                    *tile_state = TileState::Final(distance);
                 }
 
-                last_pos = prevs.get_mut(entity).unwrap().0;
+                next_pos = tile_parents.get_mut(entity).unwrap().0;
             }
         }
 
@@ -119,8 +121,8 @@ impl Pathfinder {
     fn step_internal(
         &mut self,
         storage: &TileStorage,
-        mut states: Query<&mut TileState>,
-        mut prevs: Query<&mut TilePrev>,
+        mut tile_states: Query<&mut TileState>,
+        mut tile_parents: Query<&mut TileParent>,
     ) -> ControlFlow<Option<TilePos>> {
         let Some(tile) = self.algorithm.next() else {
             debug!("no more tiles in queue");
@@ -129,12 +131,12 @@ impl Pathfinder {
 
         debug!("stepping on tile {}", tile);
 
-        if self.goals.contains(&tile) {
+        if self.goal_tiles.contains(&tile) {
             debug!("reached goal {}", tile);
             return ControlFlow::Break(Some(tile.pos));
         }
 
-        for neighbor in tile.neighbors(&self.goals) {
+        for neighbor in tile.neighbors(&self.goal_tiles) {
             if self.visited.contains(&neighbor) {
                 debug!("neighbor skip {}", neighbor);
                 continue;
@@ -147,14 +149,14 @@ impl Pathfinder {
                 continue;
             };
 
-            let mut neighbor_state = states.get_mut(entity).unwrap();
+            let mut neighbor_state = tile_states.get_mut(entity).unwrap();
 
             if *neighbor_state == TileState::Wall {
                 debug!("neighbor wall {}", neighbor);
                 continue;
             }
 
-            *prevs.get_mut(entity).unwrap() = TilePrev(Some(tile.pos));
+            *tile_parents.get_mut(entity).unwrap() = TileParent(Some(tile.pos));
 
             debug!("neighbor queue {}", neighbor);
 
@@ -165,7 +167,7 @@ impl Pathfinder {
             }
         }
 
-        let mut tile_state = states
+        let mut tile_state = tile_states
             .get_mut(storage.checked_get(&tile.pos).unwrap())
             .unwrap();
 
@@ -182,8 +184,8 @@ impl Default for Pathfinder {
         Self {
             algorithm: AlgorithmOption::default().into(),
             visited: Default::default(),
-            start: Default::default(),
-            goals: Default::default(),
+            start_tiles: Default::default(),
+            goal_tiles: Default::default(),
             step: Default::default(),
             complete: Default::default(),
         }
