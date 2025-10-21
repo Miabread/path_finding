@@ -71,6 +71,7 @@ fn startup(
                         ..Default::default()
                     },
                     TileState::Empty,
+                    TilePrev(None),
                 ))
                 .id();
             tile_storage.set(&tile_pos, tile_entity);
@@ -92,6 +93,9 @@ fn startup(
         ..Default::default()
     });
 }
+
+#[derive(Debug, Clone, Copy, Component, Default, PartialEq, Eq)]
+struct TilePrev(Option<TilePos>);
 
 #[derive(Debug, Clone, Copy, Component, Default, PartialEq, Eq)]
 

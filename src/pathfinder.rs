@@ -4,7 +4,7 @@ use rand::seq::IteratorRandom;
 use std::{collections::HashSet, ops::ControlFlow};
 
 use crate::{
-    TileState,
+    TilePrev, TileState,
     algorithm::{Algorithm, AlgorithmOption},
     tile::Tile,
 };
@@ -64,7 +64,12 @@ impl Pathfinder {
         self.complete = false;
     }
 
-    pub fn step(&mut self, storage: &TileStorage, tiles: Query<&mut TileState>) {
+    pub fn step(
+        &mut self,
+        storage: &TileStorage,
+        mut states: Query<&mut TileState>,
+        mut prevs: Query<&mut TilePrev>,
+    ) {
         if self.complete {
             return;
         }
@@ -81,8 +86,21 @@ impl Pathfinder {
             }
         }
 
-        if self.step_internal(storage, tiles).is_break() {
+        if let ControlFlow::Break(mut last_pos) =
+            self.step_internal(storage, states.reborrow(), prevs.reborrow())
+        {
             self.complete = true;
+
+            while let Some(current_last_pos) = last_pos {
+                let Some(entity) = storage.checked_get(&current_last_pos) else {
+                    last_pos = None;
+                    continue;
+                };
+
+                *states.get_mut(entity).unwrap() = TileState::Final;
+
+                last_pos = prevs.get_mut(entity).unwrap().0;
+            }
         }
 
         debug!("----- pathfinder step done = {} -----", self.step);
@@ -92,18 +110,19 @@ impl Pathfinder {
     fn step_internal(
         &mut self,
         storage: &TileStorage,
-        mut tiles: Query<&mut TileState>,
-    ) -> ControlFlow<()> {
+        mut states: Query<&mut TileState>,
+        mut prevs: Query<&mut TilePrev>,
+    ) -> ControlFlow<Option<TilePos>> {
         let Some(tile) = self.algorithm.next() else {
             debug!("no more tiles in queue");
-            return ControlFlow::Break(());
+            return ControlFlow::Break(None);
         };
 
         debug!("stepping on tile {}", tile);
 
         if self.goals.contains(&tile) {
             debug!("reached goal {}", tile);
-            return ControlFlow::Break(());
+            return ControlFlow::Break(Some(tile.pos));
         }
 
         for neighbor in tile.neighbors(&self.goals) {
@@ -119,12 +138,14 @@ impl Pathfinder {
                 continue;
             };
 
-            let mut neighbor_state = tiles.get_mut(entity).unwrap();
+            let mut neighbor_state = states.get_mut(entity).unwrap();
 
             if *neighbor_state == TileState::Wall {
                 debug!("neighbor wall {}", neighbor);
                 continue;
             }
+
+            *prevs.get_mut(entity).unwrap() = TilePrev(Some(tile.pos));
 
             debug!("neighbor queue {}", neighbor);
 
@@ -135,7 +156,7 @@ impl Pathfinder {
             }
         }
 
-        let mut tile_state = tiles
+        let mut tile_state = states
             .get_mut(storage.checked_get(&tile.pos).unwrap())
             .unwrap();
 

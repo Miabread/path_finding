@@ -6,7 +6,7 @@ use bevy_egui::{
 };
 
 use crate::{
-    TileState,
+    TilePrev, TileState,
     algorithm::AlgorithmOption,
     generate::{flush_path, generate_flat, generate_maze, generate_noise},
     pathfinder::Pathfinder,
@@ -51,7 +51,8 @@ fn options_menu(
     mut contexts: EguiContexts,
     mut pathfinder: ResMut<Pathfinder>,
     mut options: ResMut<Options>,
-    mut tiles: Query<&mut TileState>,
+    mut states: Query<&mut TileState>,
+    mut prevs: Query<&mut TilePrev>,
     mut tiles_pos: Query<&TilePos>,
     storage: Query<&TileStorage>,
 ) {
@@ -130,7 +131,7 @@ fn options_menu(
 
             if restart {
                 pathfinder.restart(options.algorithm);
-                flush_path(tiles.reborrow());
+                flush_path(states.reborrow());
             }
         }
 
@@ -147,11 +148,11 @@ fn options_menu(
         ui.horizontal(|ui| {
             if ui.button("Restart").clicked() {
                 pathfinder.restart(options.algorithm);
-                flush_path(tiles.reborrow());
+                flush_path(states.reborrow());
             };
 
             if ui.button("Step").clicked() {
-                pathfinder.step(storage.single(), tiles.reborrow());
+                pathfinder.step(storage.single(), states.reborrow(), prevs.reborrow());
             };
 
             ui.checkbox(&mut options.auto_enabled, "Auto");
@@ -164,23 +165,23 @@ fn options_menu(
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Flush").clicked() {
-                flush_path(tiles.reborrow());
+                flush_path(states.reborrow());
             }
 
             if ui.button("Empty").clicked() {
                 pathfinder.restart(options.algorithm);
-                generate_flat(tiles.reborrow(), TileState::Empty);
+                generate_flat(states.reborrow(), TileState::Empty);
             }
 
             if ui.button("Wall").clicked() {
                 pathfinder.restart(options.algorithm);
-                generate_flat(tiles.reborrow(), TileState::Wall);
+                generate_flat(states.reborrow(), TileState::Wall);
             }
 
             if ui.button("Noise").clicked() {
                 pathfinder.restart(options.algorithm);
                 generate_noise(
-                    tiles.reborrow(),
+                    states.reborrow(),
                     tiles_pos.reborrow(),
                     options.noise_scale,
                     options.noise_threshold,
@@ -189,7 +190,7 @@ fn options_menu(
 
             if ui.button("Maze").clicked() {
                 pathfinder.restart(options.algorithm);
-                generate_maze(tiles.reborrow(), tiles_pos.reborrow(), storage)
+                generate_maze(states.reborrow(), tiles_pos.reborrow(), storage)
             }
         });
         ui.add(Slider::new(&mut options.noise_scale, 1.0..=10.0).text("Noise Scale"));
@@ -222,6 +223,7 @@ fn auto_step(
     mut pathfinder: ResMut<Pathfinder>,
     mut options: ResMut<Options>,
     tiles: Query<&mut TileState>,
+    prevs: Query<&mut TilePrev>,
     storage: Query<&TileStorage>,
 ) {
     if !options.auto_enabled {
@@ -232,6 +234,6 @@ fn auto_step(
     options.current_tick += 1;
     if options.current_tick >= (MAX_AUTO_SPEED - options.auto_speed) {
         options.current_tick = 0;
-        pathfinder.step(storage.single(), tiles);
+        pathfinder.step(storage.single(), tiles, prevs);
     }
 }
