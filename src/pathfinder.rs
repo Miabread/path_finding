@@ -97,7 +97,11 @@ impl Pathfinder {
                     continue;
                 };
 
-                *states.get_mut(entity).unwrap() = TileState::Final;
+                let mut state = states.get_mut(entity).unwrap();
+
+                if let TileState::Visited(distance) = *state {
+                    *state = TileState::Final(distance);
+                }
 
                 last_pos = prevs.get_mut(entity).unwrap().0;
             }
