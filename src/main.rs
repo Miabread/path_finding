@@ -125,7 +125,7 @@ fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>
             }
             TileState::Final(distance) => {
                 let ratio = *distance as f32 / MAP_SIZE as f32;
-                Color::srgb(1.0, ratio, 1.0 - ratio).into()
+                basic::BLACK.lighter(ratio)
             }
         }
         .into();
