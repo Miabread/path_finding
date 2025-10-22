@@ -3,31 +3,34 @@ use bevy::{
     prelude::*,
 };
 use bevy_ecs_tilemap::prelude::*;
-use bevy_egui::input::egui_wants_input;
+use bevy_egui::input::egui_wants_any_input;
 
 use crate::TileState;
 
 pub fn input_plugin(app: &mut App) {
     app.init_resource::<CursorPos>().add_systems(
         Update,
-        (movement, zoom, cursor_pos, mouse_paint).run_if(not(egui_wants_input)),
+        (movement, zoom, cursor_pos, mouse_paint).run_if(not(egui_wants_any_input)),
     );
 }
 
 fn mouse_paint(
     cursor_pos: Res<CursorPos>,
-    tilemap: Query<(
-        &TilemapSize,
-        &TilemapGridSize,
-        &TilemapType,
-        &TileStorage,
-        &Transform,
-    )>,
+
     mut tile_states: Query<&mut TileState>,
     mouse: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    tilemap: Single<(
+        &TilemapSize,
+        &TilemapGridSize,
+        &TilemapTileSize,
+        &TilemapType,
+        &TilemapAnchor,
+        &TileStorage,
+        &Transform,
+    )>,
 ) {
-    let (map_size, grid_size, map_type, tile_storage, map_transform) = tilemap.single();
+    let (map_size, grid_size, tile_size, map_type, anchor, tile_storage, map_transform) = *tilemap;
 
     // Grab the cursor position from the `Res<CursorPos>`
     let cursor_pos: Vec2 = cursor_pos.0;
@@ -36,13 +39,19 @@ fn mouse_paint(
     let cursor_in_map_pos: Vec2 = {
         // Extend the cursor_pos vec3 by 0.0 and 1.0
         let cursor_pos = Vec4::from((cursor_pos, 0.0, 1.0));
-        let cursor_in_map_pos = map_transform.compute_matrix().inverse() * cursor_pos;
+        let cursor_in_map_pos = map_transform.to_matrix().inverse() * cursor_pos;
         cursor_in_map_pos.xy()
     };
 
     // Once we have a world position we can transform it into a possible tile position.
-    let Some(tile_pos) = TilePos::from_world_pos(&cursor_in_map_pos, map_size, grid_size, map_type)
-    else {
+    let Some(tile_pos) = TilePos::from_world_pos(
+        &cursor_in_map_pos,
+        map_size,
+        grid_size,
+        tile_size,
+        map_type,
+        anchor,
+    ) else {
         return;
     };
 
@@ -83,7 +92,7 @@ impl Default for CursorPos {
 // We need to keep the cursor position updated based on any `CursorMoved` events.
 pub fn cursor_pos(
     camera_q: Query<(&GlobalTransform, &Camera)>,
-    mut cursor_moved_events: EventReader<CursorMoved>,
+    mut cursor_moved_events: MessageReader<CursorMoved>,
     mut cursor_pos: ResMut<CursorPos>,
 ) {
     for cursor_moved in cursor_moved_events.read() {
@@ -98,11 +107,10 @@ pub fn cursor_pos(
     }
 }
 
-pub fn zoom(
-    mut scroll: EventReader<MouseWheel>,
-    mut query: Query<&mut OrthographicProjection, With<Camera>>,
-) {
-    let mut ortho = query.single_mut();
+pub fn zoom(mut scroll: MessageReader<MouseWheel>, ortho: Single<&mut Projection, With<Camera>>) {
+    let Projection::Orthographic(ref mut ortho) = *ortho.into_inner() else {
+        return;
+    };
 
     for event in scroll.read() {
         if event.y > 0.0 {
@@ -115,14 +123,18 @@ pub fn zoom(
 
 pub fn movement(
     mouse: Res<ButtonInput<MouseButton>>,
-    mut motion: EventReader<MouseMotion>,
-    mut query: Query<(&mut Transform, &OrthographicProjection), With<Camera>>,
+    mut motion: MessageReader<MouseMotion>,
+    query: Single<(&mut Transform, &Projection), With<Camera>>,
 ) {
-    let (mut transform, ortho) = query.single_mut();
+    let (mut transform, ortho) = query.into_inner();
 
     if !mouse.pressed(MouseButton::Middle) {
         return;
     }
+
+    let Projection::Orthographic(ortho) = ortho else {
+        return;
+    };
 
     for event in motion.read() {
         transform.translation += ortho.scale * Vec3::new(-event.delta.x, event.delta.y, 0.0);

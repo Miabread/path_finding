@@ -49,22 +49,20 @@ pub fn generate_noise(
 
 pub fn generate_maze(
     mut tile_states: Query<&mut TileState>,
-    mut tile_positions: Query<&TilePos>,
-    storage: Query<&TileStorage>,
+    tile_positions: Query<&TilePos>,
+    storage: &TileStorage,
 ) {
     generate_flat(tile_states.reborrow(), TileState::Empty);
-
-    let storage = storage.single();
 
     let maze = RbGenerator::new(None)
         .generate(MAP_SIZE as i32 / 2, MAP_SIZE as i32 / 2)
         .unwrap();
 
-    let mut lens = tile_positions.join::<_, (&mut TileState, &TilePos)>(&mut tile_states);
-
-    for (mut tile_state, &TilePos { x, y }) in lens.query().iter_mut() {
+    for &TilePos { x, y } in tile_positions {
         match (x % 2 == 0, y % 2 == 0) {
             (false, false) => {
+                let entity = storage.checked_get(&TilePos::new(x, y)).unwrap();
+                let mut tile_state = tile_states.get_mut(entity).unwrap();
                 *tile_state = TileState::Wall;
             }
             (true, false) | (false, true) => {}
@@ -81,14 +79,14 @@ pub fn generate_maze(
                 ];
 
                 for (direction, x, y) in directions {
-                    storage.checked_get(&TilePos::new(x, y)).map(|entity| {
+                    if let Some(entity) = storage.checked_get(&TilePos::new(x, y)) {
                         let mut tile_state = tile_states.get_mut(entity).unwrap();
                         if field.has_passage(&direction) {
                             *tile_state = TileState::Empty;
                         } else {
                             *tile_state = TileState::Wall;
                         }
-                    });
+                    }
                 }
             }
         }

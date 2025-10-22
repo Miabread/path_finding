@@ -38,7 +38,7 @@ impl Tile {
 fn distance(a: TilePos, b: TilePos) -> u32 {
     let x_diff = b.x as i32 - a.x as i32;
     let y_diff = b.y as i32 - a.y as i32;
-    (x_diff.pow(2) + y_diff.pow(2)).isqrt().abs() as u32
+    (x_diff.pow(2) + y_diff.pow(2)).isqrt().unsigned_abs()
 }
 
 impl PartialEq for Tile {
@@ -57,7 +57,7 @@ impl Hash for Tile {
 
 impl PartialOrd for Tile {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Reverse(self.distance).partial_cmp(&Reverse(other.distance))
+        Some(self.cmp(other))
     }
 }
 

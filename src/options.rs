@@ -54,11 +54,13 @@ fn options_menu(
     mut tile_states: Query<&mut TileState>,
     mut tile_parents: Query<&mut TileParent>,
     mut tiles_positions: Query<&TilePos>,
-    storage: Query<&TileStorage>,
+    storage: Single<&TileStorage>,
 ) {
     let spacing = 10.0;
 
-    Window::new("Options").show(contexts.ctx_mut(), |ui| {
+    let ctx = contexts.ctx_mut().unwrap();
+
+    Window::new("Options").show(ctx, |ui| {
         ui.add_space(spacing);
         ui.heading(format!("Algorithm (step {})", pathfinder.step));
         ui.separator();
@@ -152,11 +154,7 @@ fn options_menu(
             };
 
             if ui.button("Step").clicked() {
-                pathfinder.step(
-                    storage.single(),
-                    tile_states.reborrow(),
-                    tile_parents.reborrow(),
-                );
+                pathfinder.step(&storage, tile_states.reborrow(), tile_parents.reborrow());
             };
 
             ui.checkbox(&mut options.auto_enabled, "Auto");
@@ -196,7 +194,7 @@ fn options_menu(
             }
 
             if ui.button("Maze").clicked() {
-                generate_maze(tile_states.reborrow(), tiles_positions.reborrow(), storage);
+                generate_maze(tile_states.reborrow(), tiles_positions.reborrow(), &storage);
                 flush_path(tile_states.reborrow(), tile_parents.reborrow());
                 pathfinder.stop(options.algorithm);
             }
@@ -205,7 +203,7 @@ fn options_menu(
         ui.add(Slider::new(&mut options.noise_threshold, -1.0..=1.0).text("Noise Threshold"));
     });
 
-    Window::new("Information").show(contexts.ctx_mut(), |ui| {
+    Window::new("Information").show(ctx, |ui| {
         let controls = [
             ("S", "Place Start"),
             ("E", "Place Goal"),
@@ -243,7 +241,7 @@ fn auto_step(
     mut options: ResMut<Options>,
     tile_states: Query<&mut TileState>,
     tile_parents: Query<&mut TileParent>,
-    tile_storage: Query<&TileStorage>,
+    tile_storage: Single<&TileStorage>,
 ) {
     if !options.auto_enabled {
         options.current_tick = 0;
@@ -253,6 +251,6 @@ fn auto_step(
     options.current_tick += 1;
     if options.current_tick >= (MAX_AUTO_SPEED - options.auto_speed) {
         options.current_tick = 0;
-        pathfinder.step(tile_storage.single(), tile_states, tile_parents);
+        pathfinder.step(&tile_storage, tile_states, tile_parents);
     }
 }

@@ -22,7 +22,7 @@ fn main() -> AppExit {
             ..Default::default()
         }),
         TilemapPlugin,
-        EguiPlugin,
+        EguiPlugin::default(),
         input_plugin,
         pathfinder_plugin,
         options_plugin,
@@ -44,7 +44,7 @@ fn startup(
 ) {
     window.title = "Miabread/path_finding".to_string();
 
-    commands.spawn(Camera2d::default());
+    commands.spawn(Camera2d);
 
     let texture_handle: Handle<Image> =
         asset_server.load("embedded://path_finding/../assets/tiles.png");
@@ -89,7 +89,7 @@ fn startup(
         storage: tile_storage,
         texture: TilemapTexture::Single(texture_handle),
         tile_size,
-        transform: get_tilemap_center_transform(&map_size, &grid_size, &map_type, 0.0),
+        anchor: TilemapAnchor::Center,
         ..Default::default()
     });
 }
