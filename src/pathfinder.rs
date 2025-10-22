@@ -163,7 +163,7 @@ impl Pathfinder {
             self.algorithm.insert(neighbor);
 
             if *neighbor_state == TileState::Empty {
-                *neighbor_state = TileState::Queued;
+                *neighbor_state = TileState::Queued(neighbor.distance);
             }
         }
 
@@ -171,8 +171,8 @@ impl Pathfinder {
             .get_mut(storage.checked_get(&tile.pos).unwrap())
             .unwrap();
 
-        if *tile_state == TileState::Queued {
-            *tile_state = TileState::Visited(tile.distance);
+        if let TileState::Queued(distance) = *tile_state {
+            *tile_state = TileState::Visited(distance);
         }
 
         ControlFlow::Continue(())

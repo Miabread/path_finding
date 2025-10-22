@@ -105,7 +105,7 @@ enum TileState {
     Wall,
     Start,
     Goal,
-    Queued,
+    Queued(u32),
     Visited(u32),
     Final(u32),
 }
@@ -118,14 +118,21 @@ fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>
             TileState::Wall => basic::WHITE,
             TileState::Start => basic::GREEN,
             TileState::Goal => basic::RED,
-            TileState::Queued => basic::GRAY.lighter(0.2),
+            TileState::Queued(distance) => {
+                let ratio = *distance as f32 / MAP_SIZE as f32;
+                Color::srgb(ratio, 1.0, 1.0 - ratio)
+                    .mix(&basic::WHITE.into(), 0.70)
+                    .into()
+            }
             TileState::Visited(distance) => {
                 let ratio = *distance as f32 / MAP_SIZE as f32;
                 Color::srgb(ratio, 1.0, 1.0 - ratio).into()
             }
             TileState::Final(distance) => {
                 let ratio = *distance as f32 / MAP_SIZE as f32;
-                Color::srgb(ratio, 1.0, 1.0 - ratio).darker(0.6).into()
+                Color::srgb(ratio, 1.0, 1.0 - ratio)
+                    .mix(&basic::BLACK.into(), 0.60)
+                    .into()
             }
         }
         .into();

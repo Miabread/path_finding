@@ -11,7 +11,7 @@ pub fn flush_path(mut tile_states: Query<&mut TileState>, mut parents: Query<&mu
     for mut tile_state in tile_states.iter_mut() {
         if matches!(
             *tile_state,
-            TileState::Queued | TileState::Visited(_) | TileState::Final(_)
+            TileState::Queued(_) | TileState::Visited(_) | TileState::Final(_)
         ) {
             *tile_state = TileState::Empty;
         }
