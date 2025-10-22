@@ -56,9 +56,9 @@ fn options_menu(
     mut tiles_positions: Query<&TilePos>,
     storage: Query<&TileStorage>,
 ) {
-    Window::new("Options").show(contexts.ctx_mut(), |ui| {
-        let spacing = 10.0;
+    let spacing = 10.0;
 
+    Window::new("Options").show(contexts.ctx_mut(), |ui| {
         ui.add_space(spacing);
         ui.heading(format!("Algorithm (step {})", pathfinder.step));
         ui.separator();
@@ -205,7 +205,7 @@ fn options_menu(
         ui.add(Slider::new(&mut options.noise_threshold, -1.0..=1.0).text("Noise Threshold"));
     });
 
-    Window::new("Controls").show(contexts.ctx_mut(), |ui| {
+    Window::new("Information").show(contexts.ctx_mut(), |ui| {
         let controls = [
             ("S", "Place Start"),
             ("E", "Place Goal"),
@@ -215,14 +215,25 @@ fn options_menu(
             ("Scroll", "Zoom"),
         ];
 
-        Grid::new("controls").show(ui, |ui| {
-            for (key, label) in controls {
-                ui.with_layout(Layout::right_to_left(Align::default()), |ui| {
-                    ui.label(RichText::new(key).strong())
-                });
-                ui.label(label);
-                ui.end_row();
-            }
+        ui.horizontal(|ui| {
+            Grid::new("controls").show(ui, |ui| {
+                for (key, label) in controls {
+                    ui.with_layout(Layout::right_to_left(Align::default()), |ui| {
+                        ui.label(RichText::new(key).strong())
+                    });
+                    ui.label(label);
+                    ui.end_row();
+                }
+            });
+
+            ui.vertical(|ui| {
+                ui.hyperlink_to(
+                    "Source & Releases",
+                    "https://github.com/Miabread/path_finding",
+                );
+                ui.label("path_finding v1.1 (2025-10-22)");
+                ui.label("Amelia Clark (Miabread)");
+            })
         });
     });
 }
