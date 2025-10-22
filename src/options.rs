@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 use bevy_egui::{
-    EguiContexts,
+    EguiContexts, EguiPrimaryContextPass,
     egui::{Align, Grid, Layout, RichText, Slider, Window},
 };
 
@@ -14,7 +14,7 @@ use crate::{
 
 pub fn options_plugin(app: &mut App) {
     app.init_resource::<Options>()
-        .add_systems(Update, options_menu)
+        .add_systems(EguiPrimaryContextPass, options_menu)
         .add_systems(FixedUpdate, auto_step);
 }
 
@@ -58,9 +58,7 @@ fn options_menu(
 ) {
     let spacing = 10.0;
 
-    let ctx = contexts.ctx_mut().unwrap();
-
-    Window::new("Options").show(ctx, |ui| {
+    Window::new("Options").show(contexts.ctx_mut().unwrap(), |ui| {
         ui.add_space(spacing);
         ui.heading(format!("Algorithm (step {})", pathfinder.step));
         ui.separator();
@@ -203,7 +201,7 @@ fn options_menu(
         ui.add(Slider::new(&mut options.noise_threshold, -1.0..=1.0).text("Noise Threshold"));
     });
 
-    Window::new("Information").show(ctx, |ui| {
+    Window::new("Information").show(contexts.ctx_mut().unwrap(), |ui| {
         let controls = [
             ("S", "Place Start"),
             ("E", "Place Goal"),
