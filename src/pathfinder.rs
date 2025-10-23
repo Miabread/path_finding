@@ -56,6 +56,9 @@ pub struct Pathfinder {
 }
 
 impl Pathfinder {
+    /*
+     *  Reset pathfinder with automatically starting
+     */
     pub fn restart(&mut self, algorithm: AlgorithmOption) {
         self.algorithm = algorithm.into();
         self.visited.clear();
@@ -64,23 +67,32 @@ impl Pathfinder {
         self.complete = false;
     }
 
+    /**
+     * Reset pathfinder without automatically starting
+     */
     pub fn stop(&mut self, algorithm: AlgorithmOption) {
         self.restart(algorithm);
         self.complete = true;
     }
 
+    /**
+     * Perform a loop of the pathfinder
+     */
     pub fn step(
         &mut self,
         tile_storage: &TileStorage,
         mut tile_states: Query<&mut TileState>,
         mut tile_parents: Query<&mut TileParent>,
     ) {
+        // If marked as complete, don't do any more steps
         if self.complete {
             return;
         }
 
         debug!("----- pathfinder step start = {} -----", self.step);
 
+        // We're not complete and have an empty queue, meaning we haven't started yet
+        // So pick a random starting tile and queue it
         if self.visited.is_empty() {
             if let Some(&start_tile) = self.start_tiles.iter().choose(&mut rand::rng()) {
                 debug!("selected start tile {}", start_tile);
@@ -91,13 +103,16 @@ impl Pathfinder {
             }
         }
 
+        // Keep stepping until we get told to stop
         if let ControlFlow::Break(mut next_pos) = self.step_internal(
             tile_storage,
             tile_states.reborrow(),
             tile_parents.reborrow(),
         ) {
+            // Don't step anymore after this
             self.complete = true;
 
+            // If we are given a goal position back, try to follow the parent chain and mark them, filling out the full found path
             while let Some(current_pos) = next_pos {
                 let Some(entity) = tile_storage.checked_get(&current_pos) else {
                     next_pos = None;
@@ -110,6 +125,7 @@ impl Pathfinder {
                     *tile_state = TileState::Final(distance);
                 }
 
+                // Loop to next parent
                 next_pos = tile_parents.get_mut(entity).unwrap().0;
             }
         }
@@ -124,6 +140,7 @@ impl Pathfinder {
         mut tile_states: Query<&mut TileState>,
         mut tile_parents: Query<&mut TileParent>,
     ) -> ControlFlow<Option<TilePos>> {
+        // Ran out of tiles in the queue, break without a found path
         let Some(tile) = self.algorithm.next() else {
             debug!("no more tiles in queue");
             return ControlFlow::Break(None);
@@ -131,19 +148,21 @@ impl Pathfinder {
 
         debug!("stepping on tile {}", tile);
 
+        // Hit a goal tile, break with a found path
         if self.goal_tiles.contains(&tile) {
             debug!("reached goal {}", tile);
             return ControlFlow::Break(Some(tile.pos));
         }
 
         for neighbor in tile.neighbors(&self.goal_tiles) {
+            // Don't requeue tiles we've already visited
             if self.visited.contains(&neighbor) {
                 debug!("neighbor skip {}", neighbor);
                 continue;
             }
-
             self.visited.insert(neighbor);
 
+            // Get corresponding tile entity to do bookkeeping
             let Some(entity) = storage.checked_get(&neighbor.pos) else {
                 debug!("neighbor bounds {}", neighbor);
                 continue;
@@ -158,8 +177,8 @@ impl Pathfinder {
 
             *tile_parents.get_mut(entity).unwrap() = TileParent(Some(tile.pos));
 
+            // Finally enqueue the neighbor tile
             debug!("neighbor queue {}", neighbor);
-
             self.algorithm.insert(neighbor);
 
             if *neighbor_state == TileState::Empty {
@@ -167,6 +186,7 @@ impl Pathfinder {
             }
         }
 
+        // Finally finish bookkeeping on now visited tile
         let mut tile_state = tile_states
             .get_mut(storage.checked_get(&tile.pos).unwrap())
             .unwrap();
