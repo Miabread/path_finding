@@ -3,16 +3,16 @@ use std::{cmp::Reverse, collections::HashSet, fmt::Display, hash::Hash};
 use bevy_ecs_tilemap::tiles::TilePos;
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Tile {
+pub struct PathfinderTile {
     pub pos: TilePos,
     pub distance: u32,
 }
 
-impl Tile {
+impl PathfinderTile {
     /**
      * Create a new tile, finding distance from a goal list
      */
-    pub fn new(pos: TilePos, goals: &HashSet<Tile>) -> Self {
+    pub fn new(pos: TilePos, goals: &HashSet<PathfinderTile>) -> Self {
         // Find the distance to the closest goal
         let distance = goals
             .iter()
@@ -34,13 +34,13 @@ impl Tile {
     /**
      * Compute a list of all direct neighbors of this tile, finding distances from a goal list
      */
-    pub fn neighbors(&self, goals: &HashSet<Tile>) -> [Tile; 4] {
+    pub fn neighbors(&self, goals: &HashSet<PathfinderTile>) -> [PathfinderTile; 4] {
         let TilePos { x, y } = self.pos;
         [
-            Tile::new(TilePos::new(x.saturating_add(1), y), goals),
-            Tile::new(TilePos::new(x.saturating_sub(1), y), goals),
-            Tile::new(TilePos::new(x, y.saturating_add(1)), goals),
-            Tile::new(TilePos::new(x, y.saturating_sub(1)), goals),
+            PathfinderTile::new(TilePos::new(x.saturating_add(1), y), goals),
+            PathfinderTile::new(TilePos::new(x.saturating_sub(1), y), goals),
+            PathfinderTile::new(TilePos::new(x, y.saturating_add(1)), goals),
+            PathfinderTile::new(TilePos::new(x, y.saturating_sub(1)), goals),
         ]
     }
 }
@@ -53,34 +53,34 @@ fn distance(a: TilePos, b: TilePos) -> u32 {
 }
 
 // We only care about position when doing equality, distance is ignored
-impl PartialEq for Tile {
+impl PartialEq for PathfinderTile {
     fn eq(&self, other: &Self) -> bool {
         self.pos.eq(&other.pos)
     }
 }
 
-impl Eq for Tile {}
+impl Eq for PathfinderTile {}
 
-impl Hash for Tile {
+impl Hash for PathfinderTile {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.pos.hash(state);
     }
 }
 
-impl PartialOrd for Tile {
+impl PartialOrd for PathfinderTile {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 // We only care about distance for ordering, position is ignored
-impl Ord for Tile {
+impl Ord for PathfinderTile {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         Reverse(self.distance).cmp(&Reverse(other.distance))
     }
 }
 
-impl Display for Tile {
+impl Display for PathfinderTile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.pos.x, self.pos.y)
     }

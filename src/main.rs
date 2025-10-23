@@ -3,7 +3,7 @@ mod generate;
 mod input;
 mod options;
 mod pathfinder;
-mod tile;
+mod pathfinder_tile;
 
 use bevy::{asset::embedded_asset, log::LogPlugin, prelude::*, window::PrimaryWindow};
 use bevy_ecs_tilemap::prelude::*;

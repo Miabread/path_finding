@@ -6,7 +6,7 @@ use std::{collections::HashSet, ops::ControlFlow};
 use crate::{
     TileParent, TileState,
     algorithm::{Algorithm, AlgorithmOption},
-    tile::Tile,
+    pathfinder_tile::PathfinderTile,
 };
 
 pub fn pathfinder_plugin(app: &mut App) {
@@ -22,23 +22,23 @@ fn update_endpoints(
     mut pathfinder: ResMut<Pathfinder>,
 ) {
     for (state, &pos) in tiles_query.iter_mut() {
-        if pathfinder.start_tiles.remove(&Tile::zero(pos)) {
-            debug!("removed start tile {}", Tile::zero(pos));
+        if pathfinder.start_tiles.remove(&PathfinderTile::zero(pos)) {
+            debug!("removed start tile {}", PathfinderTile::zero(pos));
         }
 
-        if pathfinder.goal_tiles.remove(&Tile::zero(pos)) {
-            debug!("removed goal tile {}", Tile::zero(pos));
+        if pathfinder.goal_tiles.remove(&PathfinderTile::zero(pos)) {
+            debug!("removed goal tile {}", PathfinderTile::zero(pos));
         }
 
         match state {
             TileState::Start => {
-                debug!("added start tile {}", Tile::zero(pos));
-                pathfinder.start_tiles.insert(Tile::zero(pos));
+                debug!("added start tile {}", PathfinderTile::zero(pos));
+                pathfinder.start_tiles.insert(PathfinderTile::zero(pos));
             }
 
             TileState::Goal => {
-                debug!("added goal tile {}", Tile::zero(pos));
-                pathfinder.goal_tiles.insert(Tile::zero(pos));
+                debug!("added goal tile {}", PathfinderTile::zero(pos));
+                pathfinder.goal_tiles.insert(PathfinderTile::zero(pos));
             }
 
             _ => {}
@@ -50,11 +50,11 @@ fn update_endpoints(
 pub struct Pathfinder {
     // Used to do the actual path finding
     algorithm: Box<dyn Algorithm + Sync + Send>,
-    visited: HashSet<Tile>,
+    visited: HashSet<PathfinderTile>,
 
     // Updated by update_endpoints system
-    start_tiles: HashSet<Tile>,
-    goal_tiles: HashSet<Tile>,
+    start_tiles: HashSet<PathfinderTile>,
+    goal_tiles: HashSet<PathfinderTile>,
 
     // Bookkeeping for UI
     pub step: usize,
