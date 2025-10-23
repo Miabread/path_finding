@@ -14,6 +14,9 @@ pub fn pathfinder_plugin(app: &mut App) {
         .add_systems(Update, update_endpoints);
 }
 
+/**
+ * This system watches all TileStates, and update's the pathfinder's internal endpoints list with any added/removed endpoint tiles
+ */
 fn update_endpoints(
     mut tiles_query: Query<(&TileState, &TilePos), Changed<TileState>>,
     mut pathfinder: ResMut<Pathfinder>,
@@ -45,12 +48,15 @@ fn update_endpoints(
 
 #[derive(Resource)]
 pub struct Pathfinder {
+    // Used to do the actual path finding
     algorithm: Box<dyn Algorithm + Sync + Send>,
     visited: HashSet<Tile>,
 
+    // Updated by update_endpoints system
     start_tiles: HashSet<Tile>,
     goal_tiles: HashSet<Tile>,
 
+    // Bookkeeping for UI
     pub step: usize,
     pub complete: bool,
 }
@@ -134,6 +140,10 @@ impl Pathfinder {
         self.step += 1;
     }
 
+    /**
+     * Consider this the "loop body" of the pathfinder code
+     * It does the bulk of the computation and then decides to break or continue
+     */
     fn step_internal(
         &mut self,
         storage: &TileStorage,

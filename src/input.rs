@@ -30,6 +30,7 @@ fn mouse_paint(
         &Transform,
     )>,
 ) {
+    // Most of these are needed for the TilePos::from_world_pos later on
     let (map_size, grid_size, tile_size, map_type, anchor, tile_storage, map_transform) = *tilemap;
 
     // Grab the cursor position from the `Res<CursorPos>`

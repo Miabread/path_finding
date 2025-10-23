@@ -9,7 +9,11 @@ pub struct Tile {
 }
 
 impl Tile {
+    /**
+     * Create a new tile, finding distance from a goal list
+     */
     pub fn new(pos: TilePos, goals: &HashSet<Tile>) -> Self {
+        // Find the distance to the closest goal
         let distance = goals
             .iter()
             .copied()
@@ -20,10 +24,16 @@ impl Tile {
         Self { pos, distance }
     }
 
+    /**
+     * Create a new tile with 0 distance, used for equality comparisons
+     */
     pub fn zero(pos: TilePos) -> Self {
         Self { pos, distance: 0 }
     }
 
+    /**
+     * Compute a list of all direct neighbors of this tile, finding distances from a goal list
+     */
     pub fn neighbors(&self, goals: &HashSet<Tile>) -> [Tile; 4] {
         let TilePos { x, y } = self.pos;
         [
@@ -35,12 +45,14 @@ impl Tile {
     }
 }
 
+// Good ol' pythagorean theorem
 fn distance(a: TilePos, b: TilePos) -> u32 {
     let x_diff = b.x as i32 - a.x as i32;
     let y_diff = b.y as i32 - a.y as i32;
     (x_diff.pow(2) + y_diff.pow(2)).isqrt().unsigned_abs()
 }
 
+// We only care about position when doing equality, distance is ignored
 impl PartialEq for Tile {
     fn eq(&self, other: &Self) -> bool {
         self.pos.eq(&other.pos)
@@ -61,6 +73,7 @@ impl PartialOrd for Tile {
     }
 }
 
+// We only care about distance for ordering, position is ignored
 impl Ord for Tile {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         Reverse(self.distance).cmp(&Reverse(other.distance))

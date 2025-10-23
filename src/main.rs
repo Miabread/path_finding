@@ -58,6 +58,7 @@ fn startup(
 
     let mut tile_storage = TileStorage::empty(map_size);
 
+    // Spawn each tile in the tile map
     for x in 0..map_size.x {
         for y in 0..map_size.y {
             let tile_pos = TilePos { x, y };
@@ -82,6 +83,7 @@ fn startup(
     let grid_size = tile_size.into();
     let map_type = TilemapType::default();
 
+    // Finalize the tile map itself
     commands.entity(tilemap_entity).insert(TilemapBundle {
         grid_size,
         map_type,
@@ -110,6 +112,9 @@ enum TileState {
     Final(u32),
 }
 
+/**
+ * System that watches a tile's TileState and updates it's sprite color accordingly
+ */
 fn color_tile(mut tile_q: Query<(&mut TileColor, &TileState), Changed<TileState>>) {
     for (mut color, state) in tile_q.iter_mut() {
         use bevy::color::palettes::basic;

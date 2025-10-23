@@ -24,10 +24,12 @@ const MAX_AUTO_SPEED: usize = 20;
 struct Options {
     algorithm: AlgorithmOption,
 
+    // Pathfinder options
     auto_enabled: bool,
     auto_speed: usize,
     current_tick: usize,
 
+    // Map generation options
     noise_scale: f64,
     noise_threshold: f64,
 }
@@ -161,7 +163,7 @@ fn options_menu(
         });
 
         ui.add_space(spacing);
-        ui.heading("Map");
+        ui.heading("Map Generation");
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("Flush").clicked() {
@@ -234,6 +236,9 @@ fn options_menu(
     });
 }
 
+/**
+ * System that handles the auto step feature, keeping track of ticks and stepping on the picked nth tick
+ */
 fn auto_step(
     mut pathfinder: ResMut<Pathfinder>,
     mut options: ResMut<Options>,
